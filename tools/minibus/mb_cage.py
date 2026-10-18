@@ -51,14 +51,28 @@ def z_at(path, x, y=None):
     return best
 
 
+def _layout():
+    """Cage key points for the current body variant."""
+    if B.SHAPE:   # narrower greenhouse (front ortho tumblehome)
+        return dict(rail=(3.06, 9.62), top=9.9, top_x=2.3, belt=(4.15, 6.2), win=3.6, rack_x=(2.15, 0.75),
+                    rear=[(3.5, 7.05, 8.8), (3.9, 7.27, 6.6)], aw=(3.6, -6.75, 8.8))
+    return dict(rail=RAIL, top=HOOP_TOP, top_x=2.85, belt=(4.15, 6.85), win=3.82, rack_x=RACK_X,
+                rear=[(3.75, 7.1, 8.8), (3.9, 7.27, 7.3)], aw=(3.8, -6.75, 8.8))
+
+
 def build(ctx):
+    global RAIL, HOOP_TOP, RACK_X
+    lay = _layout()
+    RAIL, HOOP_TOP, RACK_X = lay['rail'], lay['top'], lay['rack_x']
+    tx = lay['top_x']
     bvh = body_bvh()
     paths = {}
     bd = L.Builder()
     for s in (1, -1):
-        side = [(4.08 * s, -8.47, 3.4), (4.08 * s, -8.47, 6.85), (3.8 * s, -6.75, 8.8), (RAIL[0] * s, -6.15, RAIL[1]),
-                (RAIL[0] * s, 6.2, RAIL[1]), (3.75 * s, 7.1, 8.8), (3.9 * s, 7.27, 7.3), (3.9 * s, 7.27, 4.0),
-                (3.8 * s, 7.5, 3.3)]
+        (r3x, r3y, r3z), (r2x, r2y, r2z) = lay['rear']
+        side = [(4.08 * s, -8.47, 3.4), (4.08 * s, -8.47, lay['belt'][1]), (lay['aw'][0] * s, -6.75, 8.8),
+                (RAIL[0] * s, -6.15, RAIL[1]), (RAIL[0] * s, 6.2, RAIL[1]), (r3x * s, r3y, r3z), (r2x * s, r2y, r2z),
+                (3.9 * s, 7.27, 4.0), (3.8 * s, 7.5, 3.3)]
         p = _path(side, 0.4, bvh)
         paths['side%d' % s] = p
         L.sweep(bd, p, L.circle_profile(R_CAGE, 8), 0, True, False, True, True)
@@ -68,14 +82,15 @@ def build(ctx):
         L.sweep(bd, p, L.circle_profile(R_CAGE * 1.12, 8), 0, True, False, True, True)
     for key in ('B', 'C'):
         y = HOOP_Y[key]
-        half = [(SLIDER[0], y, SLIDER[1]), (4.15, y, 6.85), (3.82, y, 8.8), (RAIL[0], y, RAIL[1]), (2.85, y, HOOP_TOP)]
+        half = [(SLIDER[0], y, SLIDER[1]), (lay['belt'][0], y, lay['belt'][1]), (lay['win'], y, 8.8),
+                (RAIL[0], y, RAIL[1]), (tx, y, HOOP_TOP)]
         pts = half + [(-x, yy, z) for (x, yy, z) in reversed(half)]
         p = _path(pts, 0.35, bvh)
         paths[key] = p
         L.sweep(bd, p, L.circle_profile(R_CAGE, 8), 0, True, False, True, True)
     for key in ('A', 'R'):
         y = HOOP_Y[key]
-        pts = [(RAIL[0], y, RAIL[1]), (2.85, y, HOOP_TOP), (-2.85, y, HOOP_TOP), (-RAIL[0], y, RAIL[1])]
+        pts = [(RAIL[0], y, RAIL[1]), (tx, y, HOOP_TOP), (-tx, y, HOOP_TOP), (-RAIL[0], y, RAIL[1])]
         p = _path(pts, 0.35, bvh)
         paths[key] = p
         L.sweep(bd, p, L.circle_profile(R_CAGE * 0.87, 8), 0, True, False, True, True)

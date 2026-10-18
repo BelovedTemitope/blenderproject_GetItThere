@@ -4,6 +4,7 @@ import math
 import bpy
 from mathutils import Matrix, Vector as V
 
+import mb_body as B
 import mb_lib as L
 
 FLOOR = [(-8.98, 3.0), (-7.7, 3.0), (-7.7, 4.45), (-2.95, 4.45), (-2.95, 3.0), (1.9, 3.0), (1.9, 4.45), (7.13, 4.45)]
@@ -26,10 +27,10 @@ def build(ctx):
         front_seat(bd, x, -6.45, 1.62, CAB_Z)
         ctx.obj(name, bd, 'Interior', ['seat', 'metal', 'seat_dark'])
     bd = L.Builder()
-    bench(bd, -3.7, -0.2, 2, -0.62, 1.62, 3.0, 4.0, 2.15, 13)
+    bench(bd, -3.62, -0.2, 2, -0.62, 1.62, 3.0, 4.0, 2.15, 13)
     ctx.obj('Interior_Bench_Row1', bd, 'Interior', ['seat', 'metal', 'seat_dark'])
     bd = L.Builder()
-    bench(bd, -3.7, 3.7, 3, 4.55, 1.6, CAB_Z, 4.85, 2.1, 15)
+    bench(bd, -3.6, 3.6, 3, 4.55, 1.6, CAB_Z, 4.85, 2.1, 15)
     ctx.obj('Interior_Bench_Row2', bd, 'Interior', ['seat', 'metal', 'seat_dark'])
 
 
@@ -38,9 +39,10 @@ def clip_to_shell(bd, front=-8.97, rear=7.1, half=3.77):
     """Keep interior parts inside the shell, following the 45deg corner chamfers."""
     for v in bd.bm.verts:
         ax = abs(v.co.x)
-        if ax > half:
-            v.co.x = half if v.co.x > 0 else -half
-            ax = half
+        lim = min(half, B.side_x_at(v.co.z) - 0.13)   # follow the tumblehome
+        if ax > lim:
+            v.co.x = lim if v.co.x > 0 else -lim
+            ax = lim
         lift = max(0.0, (v.co.z - 6.2) / 0.65) * 0.4 if v.co.z > 6.2 else 0.0
         ymin = front + lift + max(0.0, ax - 3.47)
         ymax = rear - max(0.0, ax - 3.47)

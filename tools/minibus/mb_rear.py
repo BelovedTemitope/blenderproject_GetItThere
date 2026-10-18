@@ -72,11 +72,11 @@ def corner_section(z, s):
 def panels_and_stack(ctx):
     bvh = C.body_bvh()
     bd = L.Builder()
-    zs = [3.75, 4.75, 5.8, 6.85, 7.6, 8.3]
+    zs = [3.75, 4.75, 5.6, 6.2, 6.85, 7.6, 8.3]   # rows on the body creases so the plate never chords through
     for s in (1, -1):
         P, N = [], []
         for z in zs:
-            sec = corner_section(z, s)
+            sec = [bvh.find_nearest(p)[0] for p in corner_section(z, s)]   # snap onto the real shell
             row_p, row_n = [], []
             for j, p in enumerate(sec):
                 # normal = average of neighbouring face normals from the shell
@@ -86,7 +86,7 @@ def panels_and_stack(ctx):
                     loc, n, idx, d = bvh.find_nearest(mid)
                     nrms.append(n)
                 n = sum(nrms, V()).normalized()
-                row_p.append(p + n * 0.075)
+                row_p.append(p + n * 0.085)
                 row_n.append(n)
             P.append(row_p)
             N.append(row_n)
@@ -107,7 +107,7 @@ def panels_and_stack(ctx):
     pts = [(x, y, 2.6), (x, y, 9.2), (x, y + 0.15, 9.55), (x, y + 0.5, 9.75)]
     L.tube(ex, pts, 0.15, 8, 0, fillet=0.3, caps=True)
     # clamps with stand-off brackets to the armour panel
-    for z in (3.9, 6.0, 8.0):
+    for z in (3.9, 5.5, 7.05):
         L.lathe(ex, [(0.18, z - 0.07), (0.18, z + 0.07)], 8, 1, V((x, y, 0)), 'Z', True, True)
         sec = corner_section(z, 1)
         panel_x = sec[0].x + 0.06

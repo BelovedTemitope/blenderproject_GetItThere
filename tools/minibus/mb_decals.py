@@ -27,12 +27,25 @@ def _k(z):
     return _row_interp(B.SIDE_X, z) / 3.9
 
 
-def ribbon(bd, bvh, pts, width, mat, off=0.007):
-    pts = L.densify([V(p) for p in pts], 0.3)
+def project(bvh, p, axis, off):
+    """Drop a point straight onto the shell along -axis (no sliding over ridges), then lift it by off."""
+    hit = bvh.ray_cast(p + axis * 1.5, -axis, 3.0)
+    if hit[0] is not None and (hit[0] - p).length < 0.6:
+        return hit[0] + axis * off, axis
+    loc, nrm, idx, d = bvh.find_nearest(p)
+    return loc + nrm * off, nrm
+
+
+def ribbon(bd, bvh, pts, width, mat, off=0.03, axis=None):
+    pts = L.densify([V(p) for p in pts], 0.06)
     proj = []
     for p in pts:
-        loc, nrm, idx, d = bvh.find_nearest(p)
-        proj.append((loc, nrm))
+        if axis is not None:
+            q, n = project(bvh, p, axis, 0.0)
+            proj.append((q, axis))
+        else:
+            loc, nrm, idx, d = bvh.find_nearest(p)
+            proj.append((loc, nrm))
     rows = []
     for i, (loc, nrm) in enumerate(proj):
         a = proj[max(i - 1, 0)][0]
@@ -59,52 +72,52 @@ def build(ctx):
         x0 = s * 3.9
 
         def P(u, v, off):
-            # u: reading direction (screen right for a viewer outside this side), v: up
-            return V((x0 + s * off, ROUNDEL['y'] + s * u, ROUNDEL['z'] + v))
-        n = 16
-        radii = [0.12, 0.42, ROUNDEL['r_in']]
-        rings = []
-        for r in radii:
-            rings.append([bd.vert(P(r * math.cos(2 * math.pi * k / n), r * math.sin(2 * math.pi * k / n), 0.006))
-                          for k in range(n)])
+            # u: reading direction (screen right for a viewer outside this side), v: up.
+            # Every decal vertex is projected onto the shell so it wraps over the body ridges.
+            p = V((x0, ROUNDEL['y'] + s * u, ROUNDEL['z'] + v))
+            return project(bvh, p, V((s, 0, 0)), off + 0.01)[0]
+
+        def ring(cu, rx, ry, n, off):
+            return [bd.vert(P(cu + rx * math.cos(2 * math.pi * k / n), ry * math.sin(2 * math.pi * k / n), off))
+                    for k in range(n)]
+        n = 48
+        radii = [0.06 + (ROUNDEL['r_in'] - 0.06) * k / 7 for k in range(8)]
+        rings = [ring(0, r, r, n, 0.02) for r in radii]
         bd.cap(rings[0], WHITE)
         bd.loft(rings, WHITE, closed=True)
-        outer = [bd.vert(P(ROUNDEL['r_out'] * math.cos(2 * math.pi * k / n),
-                           ROUNDEL['r_out'] * math.sin(2 * math.pi * k / n), 0.006)) for k in range(n)]
-        inner = [bd.vert(P(ROUNDEL['r_in'] * math.cos(2 * math.pi * k / n),
-                           ROUNDEL['r_in'] * math.sin(2 * math.pi * k / n), 0.006)) for k in range(n)]
-        bd.strip(inner, outer, RED, True)
+        red = [rings[-1]] + [ring(0, r, r, n, 0.02) for r in (0.825, ROUNDEL['r_out'])]
+        bd.loft(red, RED, closed=True)
         # "0"
-        o = [bd.vert(P(-0.2 + 0.18 * math.cos(2 * math.pi * k / 12), 0.29 * math.sin(2 * math.pi * k / 12), 0.01))
-             for k in range(12)]
-        i = [bd.vert(P(-0.2 + 0.085 * math.cos(2 * math.pi * k / 12), 0.19 * math.sin(2 * math.pi * k / 12), 0.01))
-             for k in range(12)]
-        bd.strip(i, o, BLACK, True)
-        # "1": stem + flag
-        a = [bd.vert(P(u, v, 0.01)) for (u, v) in ((0.16, -0.29), (0.28, -0.29), (0.28, 0.29), (0.16, 0.29))]
-        bd.face(a, BLACK)
-        f = [a[3], bd.vert(P(0.06, 0.16, 0.01)), bd.vert(P(0.06, 0.07, 0.01)), bd.vert(P(0.16, 0.17, 0.01))]
-        bd.face(f, BLACK)
+        zero = [ring(-0.2, rx, ry, 24, 0.026) for rx, ry in ((0.085, 0.19), (0.13, 0.24), (0.18, 0.29))]
+        bd.loft(zero, BLACK, closed=True)
+        # "1": stem (subdivided so it follows the ridge) + flag
+        stem = [[bd.vert(P(u, -0.29 + 0.58 * k / 8, 0.026)) for u in (0.16, 0.22, 0.28)] for k in range(9)]
+        bd.loft(stem, BLACK)
+        flag = [[stem[-1][0], stem[-2][0]], [bd.vert(P(0.11, 0.24, 0.026)), bd.vert(P(0.11, 0.15, 0.026))],
+                [bd.vert(P(0.06, 0.16, 0.026)), bd.vert(P(0.06, 0.07, 0.026))]]
+        bd.loft(flag, BLACK)
         # rear diagonal band
         # densely sampled so the strip follows the belt-line crease instead of cutting through it
         rows = []
         for k in range(len(BAND) - 1):
             (lo0, hi0), (lo1, hi1) = BAND[k], BAND[k + 1]
-            for j in range(4 if k < len(BAND) - 2 else 5):
-                u = j / 4.0
+            for j in range(8 if k < len(BAND) - 2 else 9):
+                u = j / 8.0
                 lo = (lo0[0] + (lo1[0] - lo0[0]) * u, lo0[1] + (lo1[1] - lo0[1]) * u)
                 hi = (hi0[0] + (hi1[0] - hi0[0]) * u, hi0[1] + (hi1[1] - hi0[1]) * u)
                 row = []
-                for t in (0.0, 0.25, 0.5, 0.75, 1.0):
+                for t in (0.0, 1 / 6, 2 / 6, 0.5, 4 / 6, 5 / 6, 1.0):
                     y = lo[0] + (hi[0] - lo[0]) * t
                     z = lo[1] + (hi[1] - lo[1]) * t
-                    loc, nrm, idx, d = bvh.find_nearest(V((x0, y, z)))
-                    row.append(bd.vert(loc + nrm * 0.01))
+                    row.append(bd.vert(project(bvh, V((x0, y, z)), V((s, 0, 0)), 0.03)[0]))
                 rows.append(row)
         bd.loft(rows, NAVY)
         for seam in SEAMS_SIDE:
-            ribbon(bd, bvh, [(x0, y, z) for (y, z) in seam], 0.035, BLACK)
+            ribbon(bd, bvh, [(x0, y, z) for (y, z) in seam], 0.035, BLACK, axis=V((s, 0, 0)))
     for seam in SEAMS_REAR:
         ribbon(bd, bvh, [(x * _k(z), 7.4, z) for (x, z) in seam], 0.035, BLACK)
     _orient(bd, lambda c: V((0, 1, 0)) if c.y > 6.9 else V((1 if c.x > 0 else -1, 0, 0)))
-    ctx.obj('Livery_Decals', bd, 'Body', ['decal_white', 'decal_red', 'decal_black', 'navy'], recalc=False)
+    o = ctx.obj('Livery_Decals', bd, 'Body', ['decal_white', 'decal_red', 'decal_black', 'navy'], recalc=False)
+    # smooth-shade the thin decal skin so it reads cleanly where it folds over the swage lines
+    for p in o.data.polygons:
+        p.use_smooth = True

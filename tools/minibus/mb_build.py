@@ -1,7 +1,7 @@
 """Build GIT_Veh_Minibus v03 from the v02 blockout.
 
 Run headless:
-    python mb_build.py -- <repo_dir> <out.blend>
+    python mb_build.py -- <repo_dir> <out.blend> [v03|ridges|shape]
 (or inside Blender: blender -b GIT_Veh_Minibus_Blockout_v02.blend -P mb_build.py -- <repo_dir> <out.blend>)
 """
 import os
@@ -25,6 +25,10 @@ def main():
     tires = os.path.join(repo, 'ILikeTheTires.blend')
     if os.path.abspath(bpy.data.filepath or '') != os.path.abspath(src):
         bpy.ops.wm.open_mainfile(filepath=src)
+    variant = args[2] if len(args) > 2 else 'shape'
+    import mb_body
+    mb_body.configure(ridges=variant in ('ridges', 'shape'), shape=variant == 'shape')
+    print('VARIANT', variant)
     ctx = P.Context(tires)
     import mb_chassis, mb_front, mb_cage, mb_rear, mb_interior, mb_cargo, mb_decals
     P.EXTRA[:] = [mb_chassis.build, mb_front.build, mb_cage.build, mb_rear.build, mb_interior.build,

@@ -29,12 +29,51 @@ ROW_Z = {'r0': 2.7, 'rf': 6.2, 'r2': 6.85, 'r3': 8.8, 'r4': 9.3, 'r5': 9.55}
 SIDE_X = [3.82, 3.9, 3.9, 3.9, 3.9, 3.62, 3.45, 3.15]          # half width per row (tumblehome)
 FRONT_Y = [-9.1, -9.1, -9.1, -9.1, -8.7, -6.88, -6.55, -6.25]   # front face per row
 REAR_Y = [7.25, 7.25, 7.25, 7.25, 7.25, 6.88, 6.52, 6.1]        # rear face per row
-FRONT_Z = {5: 9.02, 6: 9.37}   # windscreen top sits higher than the side windows
-REAR_Z = {5: 8.98, 6: 9.36}
+FRONT_Z = {'r3': 9.02, 'r4': 9.37}   # windscreen top sits higher than the side windows
+REAR_Z = {'r3': 8.98, 'r4': 9.36}
 CORNER_CH = [0.3, 0.3, 0.3, 0.3, 0.3, 0.12, 0.08, 0.06]         # vertical corner chamfer per row
 ROOF_CROWN = 0.1
 
 X_LAT = [-3.9, -3.6, -3.25, 0.0, 3.25, 3.6, 3.9]   # ix lattice (scaled per row by SIDE_X/3.9)
+BASE_ROWS = ROWS[:]
+
+# --- variants ---------------------------------------------------------------
+# RIDGES: T3 swage lines (upper at door-handle height, lower between the arches)
+# SHAPE:  stronger tumblehome measured from the front ortho reference
+RIDGES = False
+SHAPE = False
+SIDE_X_V03 = SIDE_X[:]
+SIDE_X_SHAPE = [3.82, 3.9, 3.9, 3.9, 3.8, 3.33, 3.05, 2.75]
+RIDGE_UPPER_Z = [5.6, 5.7, 5.8, 5.9]   # slope / plateau / plateau / slope
+RIDGE_LOWER_Z = [3.6, 3.7, 3.8, 3.9]
+RIDGE_D = 0.035                            # how far the plateau stands proud of the panel
+RIDGE_D_FRONT = 0.03
+LOWER_RIDGE_COLS = (0, 8, 9, 10)           # lower ridge only ahead of / between the arches
+UPPER_RIDGE_OFF = (17, 18)                 # upper ridge fades out before the rear corner armour
+
+
+def configure(ridges=False, shape=False):
+    global RIDGES, SHAPE, ROWS
+    RIDGES, SHAPE = ridges, shape
+    SIDE_X[:] = SIDE_X_SHAPE if shape else SIDE_X_V03
+    ROWS = (['r0', 'r1'] + (['L1', 'L2', 'L3', 'L4'] if ridges else []) + ['rs'] +
+            (['U1', 'U2', 'U3', 'U4'] if ridges else []) + ['rf', 'r2', 'r3', 'r4', 'r5'])
+
+
+def side_x_at(z):
+    """Body half-width at height z (base rows, current variant)."""
+    zs = [ROW_Z['r0'], SILL_Z, 4.8, ROW_Z['rf'], ROW_Z['r2'], ROW_Z['r3'], ROW_Z['r4'], ROW_Z['r5']]
+    for k in range(len(zs) - 1):
+        if zs[k] <= z <= zs[k + 1]:
+            t = (z - zs[k]) / (zs[k + 1] - zs[k])
+            return SIDE_X[k] + (SIDE_X[k + 1] - SIDE_X[k]) * t
+    return SIDE_X[0] if z < zs[0] else SIDE_X[-1]
+
+
+def _base_index(name):
+    if name[0] == 'L' or name[0] == 'U':
+        return BASE_ROWS.index('rs')
+    return BASE_ROWS.index(name)
 
 
 def _interp(a, b, t):
@@ -121,26 +160,57 @@ def build_body(mats):
             return cols[ci][1]
         if name == 'rs':
             return stripe_z(ci, nc)
+        if name[0] == 'L':
+            i = int(name[1]) - 1
+            # over the arches the rows ride just above the arch edge (hidden under the flares)
+            return max(RIDGE_LOWER_Z[i], cols[ci][1] + 0.1 + 0.08 * i)
+        if name[0] == 'U':
+            return RIDGE_UPPER_Z[int(name[1]) - 1]
         return ROW_Z[name]
+
+    def col_y(ci, r, z):
+        name = ROWS[r]
+        ys = cols[ci][0]
+        if name[0] in 'LU':
+            a, b = ('r1', 'rs') if name[0] == 'L' else ('rs', 'rf')
+            ia, ib = BASE_ROWS.index(a), BASE_ROWS.index(b)
+            za, zb = row_z(ri[a], ci), row_z(ri[b], ci)
+            t = (z - za) / (zb - za) if zb != za else 0.0
+            return ys[ia] + (ys[ib] - ys[ia]) * t
+        return ys[BASE_ROWS.index(name)]
 
     def pos(ix, ci, r):
         """Lattice -> world position. ix in 0..6, ci column, r row index."""
-        sx = SIDE_X[r] / 3.9
+        name = ROWS[r]
+        b = _base_index(name)
+        sx = SIDE_X[b] / 3.9
         x = X_LAT[ix] * sx
-        y = cols[ci][0][r]
         z = row_z(r, ci)
+        y = col_y(ci, r, z)
         edge_x = ix in (0, 6)
         if ci == 0 and edge_x:
-            y += CORNER_CH[r]
+            y += CORNER_CH[b]
         if ci == nc - 1 and edge_x:
-            y -= CORNER_CH[r]
-        if ci == 0 and r in FRONT_Z:
-            z = FRONT_Z[r]
-        if ci == nc - 1 and r in REAR_Z:
-            z = REAR_Z[r]
+            y -= CORNER_CH[b]
+        if ci == 0 and name in FRONT_Z:
+            z = FRONT_Z[name]
+        if ci == nc - 1 and name in REAR_Z:
+            z = REAR_Z[name]
         if r == nr - 1:          # roof crown
-            z += ROOF_CROWN * (1 - (x / SIDE_X[r]) ** 2)
-        # front/rear faces: lower front rows at the r1 level use column 0 / last z
+            z += ROOF_CROWN * (1 - (x / SIDE_X[b]) ** 2)
+        if RIDGES and name in ('U2', 'U3', 'L2', 'L3'):
+            upper = name[0] == 'U'
+            sgn = 1 if X_LAT[ix] > 0 else -1
+            if ci == nc - 1:
+                pass                                   # no ridge across the tailgate
+            elif ci == 0:
+                front_w = 1.0 if upper else (1.0 if ix in (0, 1, 5, 6) else 0.0)
+                y -= RIDGE_D_FRONT * front_w
+                if edge_x:
+                    x += sgn * RIDGE_D * front_w
+            elif edge_x:
+                w = (0.0 if ci in UPPER_RIDGE_OFF else 1.0) if upper else (1.0 if ci in LOWER_RIDGE_COLS else 0.0)
+                x += sgn * RIDGE_D * w
         return V((x, y, z))
 
     def get(ix, ci, r):

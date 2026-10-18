@@ -3,6 +3,7 @@ import math
 
 from mathutils import Matrix, Vector as V
 
+import mb_body as B
 import mb_lib as L
 
 FACE_Y = -9.1                    # flat front panel (z 2.7 .. 6.2)
@@ -74,8 +75,9 @@ def fascia(ctx):
         L.lathe(bd, [(0.38, -9.19), (0.3, -9.22), (0.17, -9.245), (0.06, -9.25)], 16, LENS, V((c.x, 0, c.z)), 'Y',
                 False, True)
         # indicator: black housing + orange lens
-        L.rbox(bd, (0.6, 0.05, 0.44), 0.02, 1, (0, 0, 0), BLK, Matrix.Translation((s * 3.2, FACE_Y - 0.025, 4.05)))
-        L.rbox(bd, (0.5, 0.06, 0.34), 0.03, 1, (0, 0, 0), ORG, Matrix.Translation((s * 3.2, FACE_Y - 0.075, 4.05)))
+        iz = 4.14 if B.RIDGES else 4.05
+        L.rbox(bd, (0.6, 0.05, 0.44), 0.02, 1, (0, 0, 0), BLK, Matrix.Translation((s * 3.2, FACE_Y - 0.025, iz)))
+        L.rbox(bd, (0.5, 0.06, 0.34), 0.03, 1, (0, 0, 0), ORG, Matrix.Translation((s * 3.2, FACE_Y - 0.075, iz)))
     # grille: black housing, slats, centre badge
     L.rbox(bd, (3.9, 0.1, 1.1), 0.04, 1, (2, 0, 0), BLK, Matrix.Translation((0, FACE_Y - 0.05, HEAD_Z)))
     for k in range(5):
@@ -173,6 +175,17 @@ def shackles(ctx):
 
 def mirrors(ctx):
     bd = L.Builder()
+    if B.SHAPE:
+        # real-world proportions: ~17 x 25 cm head (0.6 x 0.9 units at ~0.28 m/unit), held ~10 cm off the door
+        for s in (1, -1):
+            dx = B.side_x_at(6.55)
+            L.rbox(bd, (0.06, 0.3, 0.26), 0.02, 1, (0, 0, 0), 0, Matrix.Translation((s * (dx + 0.02), -7.55, 6.55)))
+            L.tube(bd, [(s * (dx + 0.02), -7.55, 6.55), (s * 4.12, -7.5, 6.6), (s * 4.3, -7.38, 6.82)], 0.055, 8, 0,
+                   fillet=0.12, caps=True)
+            L.rbox(bd, (0.6, 0.2, 0.9), 0.07, 1, (1, 0, 2), 0, Matrix.Translation((s * 4.42, -7.38, 7.18)))
+            L.rbox(bd, (0.5, 0.03, 0.8), 0.025, 1, (0, 0, 0), 1, Matrix.Translation((s * 4.42, -7.27, 7.18)))
+        ctx.obj('Mirrors', bd, 'Body', ['steel', 'chrome'])
+        return
     for s in (1, -1):
         L.rbox(bd, (0.06, 0.32, 0.26), 0.02, 1, (0, 0, 0), 0, Matrix.Translation((s * 3.93, -7.55, 6.95)))
         L.tube(bd, [(s * 3.93, -7.55, 6.95), (s * 4.38, -7.55, 7.02), (s * 4.62, -7.5, 7.3)], 0.05, 8, 0,
@@ -185,7 +198,8 @@ def mirrors(ctx):
 def handles_and_rockers(ctx):
     bd = L.Builder()
     for s in (1, -1):
-        L.rbox(bd, (0.06, 0.62, 0.1), 0.025, 1, (0, 0, 0), 1, Matrix.Translation((s * 3.93, -4.05, 5.9)))
+        hx, hz = (3.965, 5.75) if B.RIDGES else (3.93, 5.9)     # handle sits on the swage line
+        L.rbox(bd, (0.06, 0.62, 0.1), 0.025, 1, (0, 0, 0), 1, Matrix.Translation((s * hx, -4.05, hz)))
         # navy rocker panel between the arches (covers the sill edge, sits under the cage sliders)
         L.rbox(bd, (0.33, 4.6, 0.36), 0.06, 1, (0, 6, 0), 0, Matrix.Translation((s * 3.765, -0.62, 2.62)))
     ctx.obj('Rocker_Sills', bd, 'Body', ['navy', 'chrome'])

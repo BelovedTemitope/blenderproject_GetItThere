@@ -203,6 +203,7 @@ def cap_holes(bm):
     while border:
         e = border.pop()
         loop = [e.verts[0], e.verts[1]]
+        closed = False
         while True:
             nxt = [x for x in loop[-1].link_edges if x in border]
             if not nxt:
@@ -211,12 +212,15 @@ def cap_holes(bm):
             border.discard(x)
             v = x.other_vert(loop[-1])
             if v is loop[0]:
+                closed = True
                 break
             loop.append(v)
-        if len(loop) >= 4 and len(loop) % 2 == 0 and len(loop) <= 16:
+        if closed and 4 <= len(loop) <= 16 and len(loop) % 2 == 0:
             n = len(loop)
             for i in range(n // 2 - 1):
-                bm.faces.new((loop[i], loop[i + 1], loop[n - 2 - i], loop[n - 1 - i]))
+                q = (loop[i], loop[i + 1], loop[n - 2 - i], loop[n - 1 - i])
+                if bm.faces.get(q) is None:
+                    bm.faces.new(q)
 
 
 # ---------------------------------------------------------------------------
