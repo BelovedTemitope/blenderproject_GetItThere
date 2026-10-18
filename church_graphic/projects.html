@@ -1,27 +1,27 @@
 <!doctype html><html><head><meta charset="utf-8"><title>Church Projects</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Montserrat:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#06173f;--blue:#0f3b8c;--gold:#f2b632;--fire:#e8741c;--crimson:#b3141d;--cream:#fff8ea}
+:root{--blue:#0f3b8c;--sky:#2f6fd6;--gold:#f2b632;--gold-lite:#ffe08a;--fire:#e8741c;--crimson:#b3141d;--wine:#5e0a10;--cream:#fff8ea}
 *{margin:0;box-sizing:border-box}
-body{width:1920px;height:1080px;background:radial-gradient(ellipse at 70% 0%,#1b4fb8 0%,var(--navy) 55%,#06122e 100%);font-family:Montserrat,sans-serif;color:var(--cream);overflow:hidden;position:relative}
-.bar{position:absolute;left:0;right:0;height:14px;background:linear-gradient(90deg,var(--fire),var(--gold),var(--fire))}
-.top{top:0}.bot{bottom:0}
+body{width:1920px;height:1080px;background:radial-gradient(ellipse 80% 70% at 50% 0%,#d8381e 0%,var(--crimson) 40%,var(--wine) 100%);font-family:Montserrat,sans-serif;color:var(--cream);overflow:hidden;position:relative}
+body::after{content:"";position:absolute;left:0;right:0;bottom:0;height:300px;background:radial-gradient(ellipse 60% 100% at 50% 100%,rgba(242,182,50,.35),transparent 75%);pointer-events:none}
+.bar{position:absolute;left:0;right:0;height:16px;background:var(--blue);border-bottom:4px solid var(--gold)}
+.top{top:0}.bot{bottom:0;border-bottom:0;border-top:4px solid var(--gold)}
 header{text-align:center;padding-top:56px}
-.min{font-family:Cinzel,serif;font-weight:900;font-size:64px;letter-spacing:3px;color:var(--gold);text-shadow:0 4px 18px rgba(232,116,42,.45)}
-.br{display:inline-block;margin-top:10px;font-weight:800;font-size:28px;letter-spacing:8px;text-transform:uppercase;padding:8px 30px;border:2px solid var(--gold);border-radius:40px;background:linear-gradient(90deg,var(--crimson),#d8381e 50%,var(--crimson));color:#fff}
-h1{font-family:Cinzel,serif;font-size:58px;margin-top:30px;letter-spacing:6px;color:#fff}
-.wrap{display:flex;gap:56px;padding:34px 110px 0}
+.min{font-family:Cinzel,serif;font-weight:900;font-size:66px;letter-spacing:3px;background:linear-gradient(180deg,var(--gold-lite),var(--gold) 50%,#f59a2a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 rgba(0,0,0,.3))}
+.br{display:inline-block;margin-top:12px;font-weight:800;font-size:28px;letter-spacing:8px;text-transform:uppercase;padding:8px 34px;border:3px solid var(--gold);border-radius:40px;background:linear-gradient(90deg,var(--blue),var(--sky) 50%,var(--blue));color:#fff}
+h1{font-family:Cinzel,serif;font-size:58px;margin-top:28px;letter-spacing:6px;color:#fff}
+.wrap{display:flex;gap:56px;padding:34px 110px 0;align-items:flex-start}
 .list{flex:1.35}
-.item{display:flex;align-items:center;background:rgba(255,255,255,.07);border-left:10px solid var(--gold);border-radius:14px;padding:22px 30px;margin-bottom:20px}
-.n{font-family:Cinzel,serif;font-size:50px;font-weight:900;color:var(--gold);width:72px}
+.item{display:flex;align-items:center;background:rgba(40,0,4,.35);border:2px solid rgba(242,182,50,.35);border-left:10px solid var(--gold);border-radius:14px;padding:20px 30px;margin-bottom:20px}
+.n{font-family:Cinzel,serif;font-size:36px;font-weight:900;color:#fff;background:var(--blue);border:3px solid var(--gold);width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:26px;flex:none}
 .t{flex:1;font-size:34px;font-weight:700}
-.p{font-size:40px;font-weight:800;color:var(--gold)}
-.total{margin-top:8px;background:linear-gradient(90deg,var(--fire),var(--gold));color:var(--navy);border-radius:14px;padding:22px 30px;display:flex;justify-content:space-between;font-size:38px;font-weight:800}
-.bank{flex:1;background:var(--cream);color:var(--navy);border-radius:22px;padding:36px 42px;border-top:12px solid var(--gold);box-shadow:0 20px 50px rgba(0,0,0,.4)}
-.bank h2{font-family:Cinzel,serif;font-size:36px;color:var(--blue);margin-bottom:20px;letter-spacing:2px}
-.row{margin-bottom:18px}.l{font-size:20px;font-weight:700;letter-spacing:3px;color:var(--fire);text-transform:uppercase}
-.v{font-size:36px;font-weight:800}.acct{font-size:58px;letter-spacing:4px;color:var(--blue)}
-footer{position:absolute;bottom:42px;width:100%;text-align:center;font-size:28px;font-style:italic;color:var(--gold)}
+.p{font-size:40px;font-weight:800;color:var(--gold-lite)}
+.total{margin-top:8px;background:linear-gradient(90deg,var(--gold),var(--gold-lite) 50%,var(--gold));color:var(--wine);border-radius:14px;padding:22px 30px;display:flex;justify-content:space-between;font-size:38px;font-weight:800;border-bottom:8px solid var(--blue)}
+.bank{flex:1;background:var(--cream);color:var(--wine);border-radius:22px;padding:40px 44px;border-top:14px solid var(--blue);box-shadow:0 0 0 4px var(--gold),0 20px 50px rgba(0,0,0,.4)}
+.row{margin-bottom:24px}.row:last-child{margin-bottom:0}.l{font-size:20px;font-weight:700;letter-spacing:3px;color:var(--crimson);text-transform:uppercase}
+.v{font-size:38px;font-weight:800}.acct{font-size:62px;letter-spacing:4px;color:var(--blue)}
+footer{position:absolute;bottom:44px;width:100%;text-align:center;font-size:28px;font-style:italic;color:var(--gold-lite);z-index:1}
 </style></head><body>
 <div class="bar top"></div>
 <header><div class="min">THE REFINER'S PLACE MINISTRIES</div><div class="br">Ikorodu 1 Branch</div><h1>CHURCH PROJECTS</h1></header>
@@ -32,7 +32,7 @@ footer{position:absolute;bottom:42px;width:100%;text-align:center;font-size:28px
   <div class="item"><div class="n">3</div><div class="t">50 Units of Chairs</div><div class="p">₦1,300,000</div></div>
   <div class="total"><span>TOTAL (APPROX.)</span><span>₦6 MILLION</span></div>
  </div>
- <div class="bank"><h2>GIVE TOWARDS IT</h2>
+ <div class="bank">
   <div class="row"><div class="l">Bank</div><div class="v">GTBank (GTB)</div></div>
   <div class="row"><div class="l">Account Name</div><div class="v">Falade Odunayo Ebenezer</div></div>
   <div class="row"><div class="l">Account Number</div><div class="v acct">0013632105</div></div>
