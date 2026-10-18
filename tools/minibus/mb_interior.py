@@ -27,7 +27,10 @@ def build(ctx):
         front_seat(bd, x, -6.45, 1.62, CAB_Z)
         ctx.obj(name, bd, 'Interior', ['seat', 'metal', 'seat_dark'])
     bd = L.Builder()
-    bench(bd, -3.62, -0.2, 2, -0.62, 1.62, 3.0, 4.0, 2.15, 13)
+    if B.DOORS:   # doors both sides: centre the middle bench so each doorway keeps an aisle
+        bench(bd, -1.75, 1.75, 2, -0.62, 1.62, 3.0, 4.0, 2.15, 13)
+    else:
+        bench(bd, -3.62, -0.2, 2, -0.62, 1.62, 3.0, 4.0, 2.15, 13)
     ctx.obj('Interior_Bench_Row1', bd, 'Interior', ['seat', 'metal', 'seat_dark'])
     bd = L.Builder()
     bench(bd, -3.6, 3.6, 3, 4.55, 1.6, CAB_Z, 4.85, 2.1, 15)

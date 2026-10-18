@@ -7,6 +7,7 @@ import math
 
 from mathutils import Vector as V
 
+import mb_body as B
 import mb_cage as C
 import mb_lib as L
 
@@ -75,7 +76,13 @@ def build(ctx):
             # u: reading direction (screen right for a viewer outside this side), v: up.
             # Every decal vertex is projected onto the shell so it wraps over the body ridges.
             p = V((x0, ROUNDEL['y'] + s * u, ROUNDEL['z'] + v))
-            return project(bvh, p, V((s, 0, 0)), off + 0.01)[0]
+            q = project(bvh, p, V((s, 0, 0)), off + 0.01)[0]
+            if B.GROOVE:
+                # a printed sticker bridges a pressed groove instead of dipping into it
+                flat = s * (B.side_x_at(p.z) + off + 0.01)
+                if abs(flat) > abs(q.x):
+                    q.x = flat
+            return q
 
         def ring(cu, rx, ry, n, off):
             return [bd.vert(P(cu + rx * math.cos(2 * math.pi * k / n), ry * math.sin(2 * math.pi * k / n), off))
@@ -114,6 +121,8 @@ def build(ctx):
         bd.loft(rows, NAVY)
         for seam in SEAMS_SIDE:
             ribbon(bd, bvh, [(x0, y, z) for (y, z) in seam], 0.035, BLACK, axis=V((s, 0, 0)))
+        if B.DOORS:   # sliding-door track along the rear quarter panel
+            ribbon(bd, bvh, [(x0, 1.06, 6.7), (x0, 4.55, 6.7)], 0.07, BLACK, axis=V((s, 0, 0)))
     for seam in SEAMS_REAR:
         ribbon(bd, bvh, [(x * _k(z), 7.4, z) for (x, z) in seam], 0.035, BLACK)
     _orient(bd, lambda c: V((0, 1, 0)) if c.y > 6.9 else V((1 if c.x > 0 else -1, 0, 0)))

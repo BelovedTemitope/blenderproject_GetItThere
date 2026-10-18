@@ -10,7 +10,7 @@ FACE_Y = -9.1                    # flat front panel (z 2.7 .. 6.2)
 BUMPER = dict(y=-9.38, z=(2.71, 3.63), half=4.25, side_back=-8.45)
 BAR_Y = -9.47                    # bull bar uprights / hoops
 BAR_Z = (4.4, 5.75)
-A_TUBE = (4.08, -8.47)           # cage A-pillar tube (x, y) the bull-bar hoops tie into
+A_TUBE = (4.13, -8.47)           # cage A-pillar tube (x, y) the bull-bar hoops tie into
 HEAD_X, HEAD_Z = 2.89, 5.12
 
 
@@ -198,7 +198,7 @@ def mirrors(ctx):
 def handles_and_rockers(ctx):
     bd = L.Builder()
     for s in (1, -1):
-        hx, hz = (3.965, 5.75) if B.RIDGES else (3.93, 5.9)     # handle sits on the swage line
+        hx, hz = ((3.895 if B.GROOVE else 3.965), 5.75) if B.RIDGES else (3.93, 5.9)   # handle sits in/on the swage line
         L.rbox(bd, (0.06, 0.62, 0.1), 0.025, 1, (0, 0, 0), 1, Matrix.Translation((s * hx, -4.05, hz)))
         # navy rocker panel between the arches (covers the sill edge, sits under the cage sliders)
         L.rbox(bd, (0.33, 4.6, 0.36), 0.06, 1, (0, 6, 0), 0, Matrix.Translation((s * 3.765, -0.62, 2.62)))

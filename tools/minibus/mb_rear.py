@@ -129,9 +129,7 @@ def ladder(ctx):
     left = rail(x0, hz0)
     right = rail(x1, hz1)
     pts = left + right[::-1]
-    path = L.fillet_path(pts, 0.2)
-    path = L.push_out(path, bvh, 0.18)
-    path = L.fillet_path(path, 0.0)
+    path = L.fillet_path(L.clean_path(pts, bvh, 0.2), 0.2)
     L.sweep(bd, path, L.circle_profile(0.065, 8), 0, True, False, True, True)
     print('ladder clearance', round(L.min_clearance(path, bvh), 3))
 

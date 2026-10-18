@@ -32,10 +32,17 @@ def body_bvh():
 
 
 def _path(pts, fillet, bvh, clear=CLEAR):
-    p = L.fillet_path(pts, fillet)
-    if bvh is not None:
-        p = L.push_out(p, bvh, clear)
-        p = L.fillet_path(p, 0.0)
+    """Straight runs + filleted bends; corners only where the body forces one."""
+    if bvh is None:
+        return L.fillet_path(pts, fillet)
+    c = clear
+    for _ in range(4):
+        ctrl = L.clean_path(pts, bvh, c)
+        p = L.fillet_path(ctrl, fillet)
+        if L.min_clearance(p, bvh) >= R_CAGE + 0.05:
+            break
+        c += 0.03                      # a fillet cut a convex corner too tight: give it more room
+    return p
     return p
 
 
@@ -54,10 +61,69 @@ def z_at(path, x, y=None):
 def _layout():
     """Cage key points for the current body variant."""
     if B.SHAPE:   # narrower greenhouse (front ortho tumblehome)
-        return dict(rail=(3.06, 9.62), top=9.9, top_x=2.3, belt=(4.15, 6.2), win=3.6, rack_x=(2.15, 0.75),
+        return dict(rail=(3.06, 9.62), top=9.96, top_x=2.25, belt=(4.15, 6.2), win=3.6, rack_x=(2.15, 0.75),
                     rear=[(3.5, 7.05, 8.8), (3.9, 7.27, 6.6)], aw=(3.6, -6.75, 8.8))
     return dict(rail=RAIL, top=HOOP_TOP, top_x=2.85, belt=(4.15, 6.85), win=3.82, rack_x=RACK_X,
                 rear=[(3.75, 7.1, 8.8), (3.9, 7.27, 7.3)], aw=(3.8, -6.75, 8.8))
+
+
+STANDOFF = 0.24            # tube axis to panel
+
+
+def _off(bvh, p, d, clear=STANDOFF):
+    """Point `clear` off the panel: ray from outside along -d onto the shell through p."""
+    d = V(d).normalized()
+    hit = bvh.ray_cast(V(p) + d * 6.0, -d, 12.0)
+    if hit[0] is None:
+        return V(p)
+    return hit[0] + d * clear
+
+
+def _crease_zs():
+    return [B.ROW_Z['rf'], B.ROW_Z['r2'], B.ROW_Z['r3']]
+
+
+def clean_layout(bvh, tx):
+    """Cage centre lines built from the shell itself: bends only at the body creases."""
+    up = V((0.64, 0, 0.77))                       # roof-shoulder normal
+    zr = 9.43                                     # mid roof shoulder
+    def rail(y):
+        return _off(bvh, (2.9, y, zr), up, STANDOFF + 0.04)
+    zrf, zr2, zr3 = _crease_zs()
+    out = {}
+    for s in (1, -1):
+        sx = V((s, 0, 0))
+        diag = V((s * 0.707, 0.707, 0))
+        a_y = {zrf: -8.47, zr2: -8.15, zr3: -6.72}
+        front = [V((s * (B.SIDE_X[1] + STANDOFF), -8.47, 3.4))]
+        front += [_off(bvh, (0, a_y[z], z), sx) for z in (zrf, zr2, zr3)]
+        rf, rr = rail(-6.0), rail(5.95)
+        rf.x *= s
+        rr.x *= s
+        rear = [_off(bvh, (s * 3.55, 6.95, z), diag) for z in (8.6, zr2, zrf, 4.0)]
+        rear += [V((s * 3.8, 7.5, 3.3))]
+
+        def bend(a, b, t, clear):
+            # a single extra bend over a roof corner, lifted off the shell to `clear`
+            m = a.lerp(b, t)
+            loc, n, idx, d = bvh.find_nearest(m)
+            return loc + n * clear if d < clear else m
+        fc = bend(front[-1], rf, 0.3, 0.26)
+        rc = bend(rr, rear[0], 0.7, 0.27)
+        out['side%d' % s] = front + [fc, rf, rr, rc] + rear
+    def hoop(y):
+        half = [V((SLIDER[0], y, SLIDER[1]))]
+        half += [_off(bvh, (0, y, z), V((1, 0, 0))) for z in (zrf, zr2, zr3)]
+        r = rail(y)
+        half += [r, V((tx, y, HOOP_TOP))]
+        return half + [V((-p.x, p.y, p.z)) for p in reversed(half)]
+    for key in ('B', 'C'):
+        out[key] = hoop(HOOP_Y[key])
+    for key in ('A', 'R'):
+        r = rail(HOOP_Y[key])
+        out[key] = [r, V((tx, r.y, HOOP_TOP)), V((-tx, r.y, HOOP_TOP)), V((-r.x, r.y, r.z))]
+    out['rail_x'], out['rail_z'] = rail(0.0).x, rail(0.0).z
+    return out
 
 
 def build(ctx):
@@ -66,14 +132,12 @@ def build(ctx):
     RAIL, HOOP_TOP, RACK_X = lay['rail'], lay['top'], lay['rack_x']
     tx = lay['top_x']
     bvh = body_bvh()
+    CL = clean_layout(bvh, tx)
+    RAIL = (CL['rail_x'], CL['rail_z'])
     paths = {}
     bd = L.Builder()
     for s in (1, -1):
-        (r3x, r3y, r3z), (r2x, r2y, r2z) = lay['rear']
-        side = [(4.08 * s, -8.47, 3.4), (4.08 * s, -8.47, lay['belt'][1]), (lay['aw'][0] * s, -6.75, 8.8),
-                (RAIL[0] * s, -6.15, RAIL[1]), (RAIL[0] * s, 6.2, RAIL[1]), (r3x * s, r3y, r3z), (r2x * s, r2y, r2z),
-                (3.9 * s, 7.27, 4.0), (3.8 * s, 7.5, 3.3)]
-        p = _path(side, 0.4, bvh)
+        p = L.fillet_path(CL['side%d' % s], 0.35)
         paths['side%d' % s] = p
         L.sweep(bd, p, L.circle_profile(R_CAGE, 8), 0, True, False, True, True)
         slider = [(2.65 * s, -3.2, 2.45), (SLIDER[0] * s, -3.2, SLIDER[1]), (SLIDER[0] * s, 1.95, SLIDER[1]),
@@ -82,16 +146,12 @@ def build(ctx):
         L.sweep(bd, p, L.circle_profile(R_CAGE * 1.12, 8), 0, True, False, True, True)
     for key in ('B', 'C'):
         y = HOOP_Y[key]
-        half = [(SLIDER[0], y, SLIDER[1]), (lay['belt'][0], y, lay['belt'][1]), (lay['win'], y, 8.8),
-                (RAIL[0], y, RAIL[1]), (tx, y, HOOP_TOP)]
-        pts = half + [(-x, yy, z) for (x, yy, z) in reversed(half)]
-        p = _path(pts, 0.35, bvh)
+        p = L.fillet_path(CL[key], 0.35)
         paths[key] = p
         L.sweep(bd, p, L.circle_profile(R_CAGE, 8), 0, True, False, True, True)
     for key in ('A', 'R'):
         y = HOOP_Y[key]
-        pts = [(RAIL[0], y, RAIL[1]), (tx, y, HOOP_TOP), (-tx, y, HOOP_TOP), (-RAIL[0], y, RAIL[1])]
-        p = _path(pts, 0.35, bvh)
+        p = L.fillet_path(CL[key], 0.35)
         paths[key] = p
         L.sweep(bd, p, L.circle_profile(R_CAGE * 0.87, 8), 0, True, False, True, True)
     ctx.obj('Cage_Exoskeleton', bd, 'Cage_Rack', ['steel'])
@@ -121,7 +181,7 @@ def rack(ctx, paths):
 def lightbar(ctx, paths):
     bd = L.Builder()
     y0 = -6.1
-    zc = 10.55
+    zc = HOOP_TOP + 0.69
     for x in LAMP_X:
         hz = z_at(paths['A'], x)
         L.tube(bd, [(x, HOOP_Y['A'], hz), (x, -5.98, zc - 0.43)], 0.06, 8, 0, caps=True)
@@ -136,7 +196,7 @@ def lightbar(ctx, paths):
 
 def wing(ctx, paths):
     bd = L.Builder()
-    yc, zc, aoa = 6.6, 10.5, math.radians(14)
+    yc, zc, aoa = 6.6, HOOP_TOP + 0.64, math.radians(14)
     foil = [(-0.8, 0.0), (-0.62, 0.09), (-0.1, 0.12), (0.5, 0.065), (0.8, 0.0), (0.5, -0.02), (-0.1, -0.04),
             (-0.62, -0.05)]
     ca, sa = math.cos(aoa), math.sin(aoa)

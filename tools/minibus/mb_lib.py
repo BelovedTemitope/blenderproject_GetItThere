@@ -94,7 +94,7 @@ def fillet_path(pts, radius, closed=False, seg_angle=math.radians(22.5), min_seg
         d2.normalize()
         ang = d1.angle(d2) if l1 > 1e-9 and l2 > 1e-9 else 0.0
         r = radius[i] if isinstance(radius, (list, tuple)) else radius
-        if ang < 1e-3 or r <= 0:
+        if ang < 1e-3 or r <= 0 or ang > math.radians(170):
             out.append(p1.copy())
             continue
         t = r * math.tan(ang / 2)
@@ -557,3 +557,59 @@ def square_ring(bd, m, half, r_in, depth, segs=16, mat=0, inner_depth=None):
     bd.strip(sqf, sqb, mat, True)
     bd.strip(sqb, cib, mat, True)
     bd.strip(cib, cif, mat, True)
+
+
+def clean_path(pts, bvh, clear, tol=0.015, max_iter=40, step=0.05):
+    """Keep a polyline off the shell with as few corners as possible.
+
+    Straight runs stay straight; a new corner is inserted only at the single
+    worst spot where a run gets closer than `clear`, placed at the clearance
+    distance along that spot's surface normal. Repeats until every run clears.
+    """
+    P = [V(p) for p in pts]
+    for _ in range(max_iter):
+        worst = None
+        for i in range(len(P) - 1):
+            a, b = P[i], P[i + 1]
+            n = max(2, int((b - a).length / step))
+            for k in range(1, n):
+                q = a.lerp(b, k / n)
+                loc, nrm, idx, d = bvh.find_nearest(q)
+                if loc is None:
+                    continue
+                if d < clear - tol and (worst is None or d < worst[0]):
+                    worst = (d, i, q, loc, nrm)
+        if worst is None:
+            break
+        d, i, q, loc, nrm = worst
+        away = q - loc
+        if away.length < 1e-4 or away.dot(nrm) < 0:
+            away = nrm
+        P.insert(i + 1, loc + away.normalized() * clear)   # minimal move: straight off the surface
+    return P
+
+
+def thick_grid_holes(bd, P, N, t, skip=(), mat=0, inner_mat=None, rim_mat=None):
+    """Like thick_grid but cells in `skip` (i, j) are holes; rims close every open edge."""
+    inner_mat = mat if inner_mat is None else inner_mat
+    rim_mat = mat if rim_mat is None else rim_mat
+    R, C = len(P), len(P[0])
+    A = [[bd.vert(P[i][j]) for j in range(C)] for i in range(R)]
+    Bk = [[bd.vert(V(P[i][j]) - V(N[i][j]) * t) for j in range(C)] for i in range(R)]
+    edge_use = {}
+    for i in range(R - 1):
+        for j in range(C - 1):
+            if (i, j) in skip:
+                continue
+            q = [(i, j), (i, j + 1), (i + 1, j + 1), (i + 1, j)]
+            bd.face([A[a][b] for a, b in q], mat)
+            bd.face([Bk[a][b] for a, b in reversed(q)], inner_mat)
+            for k in range(4):
+                e = (q[k], q[(k + 1) % 4])
+                key = tuple(sorted(e))
+                edge_use.setdefault(key, []).append(e)
+    for key, uses in edge_use.items():
+        if len(uses) == 1:
+            (a0, b0), (a1, b1) = uses[0]
+            bd.face((A[a1][b1], A[a0][b0], Bk[a0][b0], Bk[a1][b1]), rim_mat)
+    return A, Bk

@@ -42,6 +42,8 @@ BASE_ROWS = ROWS[:]
 # SHAPE:  stronger tumblehome measured from the front ortho reference
 RIDGES = False
 SHAPE = False
+GROOVE = False        # creases pressed into the panel instead of standing proud
+DOORS = False         # sliding-door openings on both sides (doors are separate parts)
 SIDE_X_V03 = SIDE_X[:]
 SIDE_X_SHAPE = [3.82, 3.9, 3.9, 3.9, 3.8, 3.33, 3.05, 2.75]
 RIDGE_UPPER_Z = [5.6, 5.7, 5.8, 5.9]   # slope / plateau / plateau / slope
@@ -52,9 +54,9 @@ LOWER_RIDGE_COLS = (0, 8, 9, 10)           # lower ridge only ahead of / between
 UPPER_RIDGE_OFF = (17, 18)                 # upper ridge fades out before the rear corner armour
 
 
-def configure(ridges=False, shape=False):
-    global RIDGES, SHAPE, ROWS
-    RIDGES, SHAPE = ridges, shape
+def configure(ridges=False, shape=False, groove=False, doors=False):
+    global RIDGES, SHAPE, ROWS, GROOVE, DOORS
+    RIDGES, SHAPE, GROOVE, DOORS = ridges, shape, groove, doors
     SIDE_X[:] = SIDE_X_SHAPE if shape else SIDE_X_V03
     ROWS = (['r0', 'r1'] + (['L1', 'L2', 'L3', 'L4'] if ridges else []) + ['rs'] +
             (['U1', 'U2', 'U3', 'U4'] if ridges else []) + ['rf', 'r2', 'r3', 'r4', 'r5'])
@@ -138,7 +140,10 @@ def openings():
         o.append((s, 1, 7, 'r0', 'r1'))      # front arch
         o.append((s, 11, 17, 'r0', 'r1'))    # rear arch
     o.append((1, 8, 9, 'r1', 'r3'))          # sliding door opening (left)
-    o.append((-1, 8, 9, 'r2', 'r3'))         # middle window (right)
+    if DOORS:
+        o.append((-1, 8, 9, 'r1', 'r3'))     # second sliding door opening (right)
+    else:
+        o.append((-1, 8, 9, 'r2', 'r3'))     # middle window (right)
     return o
 
 
@@ -200,17 +205,18 @@ def build_body(mats):
             z += ROOF_CROWN * (1 - (x / SIDE_X[b]) ** 2)
         if RIDGES and name in ('U2', 'U3', 'L2', 'L3'):
             upper = name[0] == 'U'
+            rs = -1.0 if GROOVE else 1.0
             sgn = 1 if X_LAT[ix] > 0 else -1
             if ci == nc - 1:
                 pass                                   # no ridge across the tailgate
             elif ci == 0:
                 front_w = 1.0 if upper else (1.0 if ix in (0, 1, 5, 6) else 0.0)
-                y -= RIDGE_D_FRONT * front_w
+                y -= rs * RIDGE_D_FRONT * front_w
                 if edge_x:
-                    x += sgn * RIDGE_D * front_w
+                    x += rs * sgn * RIDGE_D * front_w
             elif edge_x:
                 w = (0.0 if ci in UPPER_RIDGE_OFF else 1.0) if upper else (1.0 if ci in LOWER_RIDGE_COLS else 0.0)
-                x += sgn * RIDGE_D * w
+                x += rs * sgn * RIDGE_D * w
         return V((x, y, z))
 
     def get(ix, ci, r):
