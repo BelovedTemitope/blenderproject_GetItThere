@@ -66,6 +66,8 @@ def _orient(bd, normal_fn):
 
 
 def build(ctx):
+    if L.OPTIMIZE:
+        return build_lite(ctx)
     bvh = C.body_bvh()
     bd = L.Builder()
     WHITE, RED, BLACK, NAVY = 0, 1, 2, 3
@@ -130,3 +132,88 @@ def build(ctx):
     # smooth-shade the thin decal skin so it reads cleanly where it folds over the swage lines
     for p in o.data.polygons:
         p.use_smooth = True
+
+
+# ---------------------------------------------------------------------------
+# v05: light decals. The side panels under every decal depend only on height
+# (tumblehome), so decals sit on that analytic surface, bridging the grooves
+# like printed stickers, with vertices only where the panel actually creases.
+# ---------------------------------------------------------------------------
+OFF = 0.03
+CREASES = (6.2, 6.85)
+
+
+def _side(s, y, z, off=OFF):
+    return V((s * (B.side_x_at(z) + off), y, z))
+
+
+def _split_z(z0, z1):
+    """Heights for a vertical run: its ends plus any panel crease in between."""
+    lo, hi = min(z0, z1), max(z0, z1)
+    zs = [z0] + [c for c in CREASES if lo < c < hi] + [z1]
+    return sorted(zs, reverse=z0 > z1)
+
+
+def build_lite(ctx):
+    bvh = C.body_bvh()
+    bd = L.Builder()
+    WHITE, RED, BLACK, NAVY = 0, 1, 2, 3
+    for s in (1, -1):
+        cy, cz = ROUNDEL['y'], ROUNDEL['z']
+
+        def P(u, v, off):
+            return bd.vert(_side(s, cy + s * u, cz + v, off))
+
+        n = 24
+        ang = [math.pi / 2 + 2 * math.pi * k / n for k in range(n)]   # start at the top -> horizontal cap strips
+        inner = [P(ROUNDEL['r_in'] * math.cos(a), ROUNDEL['r_in'] * math.sin(a), OFF) for a in ang]
+        outer = [P(ROUNDEL['r_out'] * math.cos(a), ROUNDEL['r_out'] * math.sin(a), OFF) for a in ang]
+        bd.cap(inner, WHITE)
+        bd.strip(inner, outer, RED, True)
+        m = 16
+        a2 = [2 * math.pi * k / m for k in range(m)]
+        o0 = [P(-0.2 + 0.085 * math.cos(a), 0.19 * math.sin(a), OFF + 0.006) for a in a2]
+        o1 = [P(-0.2 + 0.18 * math.cos(a), 0.29 * math.sin(a), OFF + 0.006) for a in a2]
+        bd.strip(o0, o1, BLACK, True)
+        st = [P(u, v, OFF + 0.006) for (u, v) in ((0.16, -0.29), (0.28, -0.29), (0.28, 0.29), (0.16, 0.29))]
+        bd.face(st, BLACK)
+        bd.face((st[3], P(0.06, 0.16, OFF + 0.006), P(0.06, 0.07, OFF + 0.006), P(0.16, 0.17, OFF + 0.006)), BLACK)
+        # rear diagonal band: two rows per segment, three across
+        rows = []
+        for k in range(len(BAND) - 1):
+            (lo0, hi0), (lo1, hi1) = BAND[k], BAND[k + 1]
+            for j in range(2 if k < len(BAND) - 2 else 3):
+                u = j / 2.0
+                lo = (lo0[0] + (lo1[0] - lo0[0]) * u, lo0[1] + (lo1[1] - lo0[1]) * u)
+                hi = (hi0[0] + (hi1[0] - hi0[0]) * u, hi0[1] + (hi1[1] - hi0[1]) * u)
+                rows.append([bd.vert(_side(s, lo[0] + (hi[0] - lo[0]) * t, lo[1] + (hi[1] - lo[1]) * t))
+                             for t in (0.0, 0.5, 1.0)])
+        bd.loft(rows, NAVY)
+        # door shut-line seams and the slide track
+        for (y0, z0), (y1, z1) in SEAMS_SIDE:
+            zs = _split_z(z0, z1)
+            bd.loft([[bd.vert(_side(s, y0 - 0.0175, z, OFF + 0.002)), bd.vert(_side(s, y0 + 0.0175, z, OFF + 0.002))]
+                     for z in zs], BLACK)
+        if B.DOORS:
+            bd.loft([[bd.vert(_side(s, y, 6.665, OFF + 0.002)), bd.vert(_side(s, y, 6.735, OFF + 0.002))]
+                     for y in (1.06, 4.55)], BLACK)
+    for seam in SEAMS_REAR:
+        ribbon_lite(bd, bvh, [(x * _k(z), 7.4, z) for (x, z) in seam], 0.035, BLACK)
+    _orient(bd, lambda c: V((0, 1, 0)) if c.y > 6.9 else V((1 if c.x > 0 else -1, 0, 0)))
+    ctx.obj('Livery_Decals', bd, 'Body', ['decal_white', 'decal_red', 'decal_black', 'navy'], recalc=False)
+
+
+def ribbon_lite(bd, bvh, pts, width, mat, off=0.03):
+    """Ribbon with vertices only at its ends and at the rear-face crease."""
+    pts = [V(p) for p in pts]
+    if len(pts) == 2 and abs(pts[0].z - pts[1].z) > 0.01:
+        zs = _split_z(pts[0].z, pts[1].z)
+        pts = [pts[0].lerp(pts[1], (z - pts[0].z) / (pts[1].z - pts[0].z)) for z in zs]
+    proj = [bvh.find_nearest(p)[:2] for p in pts]
+    rows = []
+    for i, (loc, nrm) in enumerate(proj):
+        a = proj[max(i - 1, 0)][0]
+        b = proj[min(i + 1, len(proj) - 1)][0]
+        side = nrm.cross((b - a).normalized()).normalized() * (width / 2)
+        rows.append([bd.vert(loc + nrm * off - side), bd.vert(loc + nrm * off + side)])
+    bd.loft(rows, mat)

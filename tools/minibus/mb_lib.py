@@ -256,6 +256,9 @@ def _axis_coords(h, c, segs, cuts):
     return out
 
 
+OPTIMIZE = False   # v05: drop subdivisions that only split flat faces
+
+
 def rbox(bd, size, chamfer=0.0, segs=1, cuts=(0, 0, 0), mat=0, matrix=None, deform=None, face_mat=None):
     """Chamfered box centred on the origin. size = full dimensions.
 
@@ -263,6 +266,10 @@ def rbox(bd, size, chamfer=0.0, segs=1, cuts=(0, 0, 0), mat=0, matrix=None, defo
     face_mat(normal_axis, sign, center) -> material index (optional).
     Returns dict of {(i,j,k): BMVert} and faces.
     """
+    if OPTIMIZE and deform is None and face_mat is None:
+        cuts = (0, 0, 0)          # flat faces need no extra loops when nothing bends them
+    if OPTIMIZE and max(size) <= 0.12:
+        chamfer = 0.0             # rivets / tiny brackets: a plain block reads the same at this size
     hx, hy, hz = (s / 2 for s in size)
     ch = chamfer if isinstance(chamfer, (list, tuple)) else (chamfer, chamfer, chamfer)
     ch = [min(c, h) for c, h in zip(ch, (hx, hy, hz))]

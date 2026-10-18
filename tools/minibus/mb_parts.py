@@ -163,9 +163,15 @@ def build_wheels(ctx):
         bm = bmesh.new()
         bm.from_mesh(me)
         L.quadify_ngons(bm)
-        cap_holes(bm)
+        caps = cap_holes(bm)
+        drop_loose_caps(bm, caps)
         bmesh.ops.scale(bm, vec=(WHEEL_SCALE,) * 3, verts=bm.verts)
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        # the hub-nut caps sit on the wheel's outer face: make them face outward along the axle
+        for f in caps:
+            f.normal_update()
+            if f.normal.x * f.calc_center_median().x < 0:
+                f.normal_flip()
         for f in bm.faces:
             r = max(math.hypot(v.co.y, v.co.z) for v in f.verts) / WHEEL_SCALE
             f.material_index = 1 if r < 1.1 else 0
@@ -197,8 +203,36 @@ def build_wheels(ctx):
 SPARE_LOC = (-1.55, 8.17, 5.72)
 
 
+def drop_loose_caps(bm, caps):
+    """The tyre file's hub-nut cap is a loose, inward-facing hexagon floating over the open nut;
+    now that the nut is properly capped, remove the loose copy (it z-fights with the real cap)."""
+    if not caps:
+        return
+    planes = {round(abs(f.calc_center_median().x), 3) for f in caps}
+    capset = set(caps)
+    seen, kill = set(), []
+    for f in bm.faces:
+        if f in seen or f in capset:
+            continue
+        stack, isl = [f], []
+        seen.add(f)
+        while stack:
+            g = stack.pop()
+            isl.append(g)
+            for e in g.edges:
+                for h in e.link_faces:
+                    if h not in seen:
+                        seen.add(h)
+                        stack.append(h)
+        if len(isl) <= 3 and all(round(abs(v.co.x), 3) in planes for g in isl for v in g.verts):
+            kill += isl
+    if kill:
+        bmesh.ops.delete(bm, geom=kill, context='FACES')
+
+
 def cap_holes(bm):
     """Close small open boundary loops (the tyre file's hub nut is open) with quads."""
+    capped = []
     border = {e for e in bm.edges if len(e.link_faces) == 1}
     while border:
         e = border.pop()
@@ -220,7 +254,8 @@ def cap_holes(bm):
             for i in range(n // 2 - 1):
                 q = (loop[i], loop[i + 1], loop[n - 2 - i], loop[n - 1 - i])
                 if bm.faces.get(q) is None:
-                    bm.faces.new(q)
+                    capped.append(bm.faces.new(q))
+    return capped
 
 
 # ---------------------------------------------------------------------------

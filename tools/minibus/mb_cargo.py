@@ -63,7 +63,11 @@ def jerrycan(bd, c, yaw=0.0):
     # embossed X panels (raised slightly on both faces)
     for s in (1, -1):
         for dx in (-0.3, 0.3):
-            L.rbox(bd, (0.44, 0.04, 0.9), 0.02, 1, (0, 0, 0), BODY, m @ Matrix.Translation((dx, s * t / 2, -0.05)))
+            if L.OPTIMIZE:
+                # pressed panel: just the raised face and its four walls, standing on the can side
+                L.rbox(bd, (0.44, 0.03, 0.9), 0.0, 1, (0, 0, 0), BODY, m @ Matrix.Translation((dx, s * (t / 2 + 0.005), -0.05)))
+            else:
+                L.rbox(bd, (0.44, 0.04, 0.9), 0.02, 1, (0, 0, 0), BODY, m @ Matrix.Translation((dx, s * t / 2, -0.05)))
     # three-bar handle across the top
     top = h / 2
     L.tube(bd, [m @ V((-0.42, 0, top + 0.16)), m @ V((0.3, 0, top + 0.16))], 0.045, 6, BODY, caps=True)
