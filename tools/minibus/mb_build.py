@@ -1,7 +1,7 @@
 """Build GIT_Veh_Minibus v03 from the v02 blockout.
 
 Run headless:
-    python mb_build.py -- <repo_dir> <out.blend> [v03|ridges|shape|v04|v04doors|v05|v05tris|v06]
+    python mb_build.py -- <repo_dir> <out.blend> [v03|ridges|shape|v04|v04doors|v05|v05tris|v06|v06quad]
 (or inside Blender: blender -b GIT_Veh_Minibus_Blockout_v02.blend -P mb_build.py -- <repo_dir> <out.blend>)
 """
 import os
@@ -44,7 +44,7 @@ def main():
         bpy.ops.wm.open_mainfile(filepath=src)
     variant = args[2] if len(args) > 2 else 'shape'
     import mb_body
-    v6 = variant == 'v06'
+    v6 = variant in ('v06', 'v06quad')
     v5 = variant in ('v05', 'v05tris') or v6
     v4 = variant in ('v04', 'v04doors') or v5
     # v06 game load: grooves/ridges are left to the texture, so the body lattice stays coarse
@@ -64,7 +64,7 @@ def main():
         mb_optimize.cull_hidden()
         if variant in ('v05tris', 'v06'):
             mb_optimize.planar_tris()
-        if v6:
+        if variant == 'v06':
             mb_optimize.lod_budget(LOD_BUDGET)
     bpy.ops.wm.save_as_mainfile(filepath=out, compress=True)
     print('SAVED', out)
