@@ -48,6 +48,8 @@ def build(ctx):
     iw0 = zs.index(B.ROW_Z['r2'])
     skip = {(iw0, 1)}                                  # window: middle column, belt -> window top
     for s, tag in ((1, 'L'), (-1, 'R')):
+        if L.LOD and tag == 'L':
+            continue                                   # v06: kerb-side doorway shown open (door slid away)
         bd = L.Builder()
         P, N = [], []
         for z in zs:

@@ -179,3 +179,35 @@ def planar_tris(angle_deg=1.0, report=True):
         if report and tris_before != tris_after:
             print('tris %-40s %5d -> %5d' % (o.name[len(PFX):], tris_before, tris_after))
     print('PLANAR TOTAL triangles %d -> %d' % tuple(total))
+
+
+def lod_budget(budget, report=True):
+    """v06: collapse-decimate each part down to its triangle budget {object suffix: tris}."""
+    total = [0, 0]
+    for o in bpy.data.objects:
+        if o.type != 'MESH' or not o.name.startswith(PFX):
+            continue
+        key = o.name[len(PFX):]
+        tris = sum(len(p.vertices) - 2 for p in o.data.polygons)
+        target = budget.get(key)
+        total[0] += tris
+        if target is None or tris <= target:
+            total[1] += tris
+            continue
+        mod = o.modifiers.new('LOD', 'DECIMATE')
+        mod.decimate_type = 'COLLAPSE'
+        mod.ratio = target / tris
+        mod.use_collapse_triangulate = True
+        bpy.context.view_layer.update()
+        dg = bpy.context.evaluated_depsgraph_get()
+        me = bpy.data.meshes.new_from_object(o.evaluated_get(dg))
+        o.modifiers.remove(mod)
+        old = o.data
+        o.data = me
+        if old.users == 0:
+            bpy.data.meshes.remove(old)
+        after = sum(len(p.vertices) - 2 for p in me.polygons)
+        total[1] += after
+        if report:
+            print('lod  %-40s %5d -> %5d' % (key, tris, after))
+    print('LOD TOTAL triangles %d -> %d' % tuple(total))

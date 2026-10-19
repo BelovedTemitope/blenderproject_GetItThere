@@ -13,6 +13,10 @@ def duffel(bd, c, length, dia, h, mats, straps=True, handle=True, axis='Y'):
     hl = length / 2
     prof = [(0.28 * rr, -hl), (0.72 * rr, -hl + 0.05), (0.94 * rr, -hl + 0.16), (rr, -hl + 0.34),
             (rr, hl - 0.34), (0.94 * rr, hl - 0.16), (0.72 * rr, hl - 0.05), (0.28 * rr, hl)]
+    if L.LOD:
+        prof = [(0.3 * rr, -hl), (0.85 * rr, -hl + 0.1), (rr, -hl + 0.34),
+                (rr, hl - 0.34), (0.85 * rr, hl - 0.1), (0.3 * rr, hl)]
+        straps = False            # straps go to the texture on the game load
     sz = h / dia
     flat = -0.4 * h
 
@@ -33,8 +37,8 @@ def duffel(bd, c, length, dia, h, mats, straps=True, handle=True, axis='Y'):
             L.lathe(bd, [(rr - 0.02, a - 0.07), (rr + 0.03, a - 0.07), (rr + 0.03, a + 0.07), (rr - 0.02, a + 0.07)],
                     12, STRAP, V(), 'Y', False, False)
             vs = list(bd.bm.verts)[s0:]
-            first = vs[:12]
-            last = vs[-12:]
+            first = vs[:L.lod_sides(12)]
+            last = vs[-L.lod_sides(12):]
             bd.strip(last, first, STRAP, True)
             for v in vs:
                 v.co = shape(v.co)

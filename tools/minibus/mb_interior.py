@@ -21,7 +21,8 @@ def build(ctx):
     floor(ctx)
     dashboard(ctx)
     steering(ctx)
-    controls(ctx)
+    if not L.LOD:
+        controls(ctx)             # pedals / gear lever are not visible at game distance
     for name, x in (('Interior_Seat_Driver', DRIVER_X), ('Interior_Seat_FrontPassenger', -DRIVER_X)):
         bd = L.Builder()
         front_seat(bd, x, -6.45, 1.62, CAB_Z)

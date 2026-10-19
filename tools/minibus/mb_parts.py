@@ -175,11 +175,12 @@ def build_wheels(ctx):
         for f in bm.faces:
             r = max(math.hypot(v.co.y, v.co.z) for v in f.verts) / WHEEL_SCALE
             f.material_index = 1 if r < 1.1 else 0
-        bm.to_mesh(me)
-        bm.free()
+        # set the slots before writing the faces: clearing slots afterwards resets every index to 0
         me.materials.clear()
         me.materials.append(ctx.m['rubber'])
         me.materials.append(ctx.m['rim'])
+        bm.to_mesh(me)
+        bm.free()
         obj = bpy.data.objects.get(PFX + n)
         old = obj.data
         obj.data = me

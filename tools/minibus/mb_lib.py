@@ -79,6 +79,8 @@ class Builder:
 # ---------------------------------------------------------------------------
 def fillet_path(pts, radius, closed=False, seg_angle=math.radians(22.5), min_segs=2):
     """Round every interior corner of a polyline with an arc."""
+    if LOD:
+        seg_angle, min_segs = max(seg_angle, math.radians(45)), 1
     pts = [V(p) for p in pts]
     n = len(pts)
     out = []
@@ -191,7 +193,15 @@ def sweep(bd, path, profile, mat=0, closed_profile=True, closed_path=False,
     return rings, faces
 
 
+def lod_sides(n):
+    """v06 game LOD: fewer sides on every round section (16->8, 12->8, 10->6, 8->6, 6->4)."""
+    if not LOD:
+        return n
+    return {16: 8, 12: 8, 10: 6, 8: 6, 6: 4}.get(n, max(4, n // 2))
+
+
 def circle_profile(r, sides=8, phase=None):
+    sides = lod_sides(sides)
     phase = math.pi / sides if phase is None else phase
     return [(r * math.cos(phase + 2 * math.pi * k / sides), r * math.sin(phase + 2 * math.pi * k / sides))
             for k in range(sides)]
@@ -208,6 +218,7 @@ def tube(bd, pts, r, sides=8, mat=0, fillet=0.0, closed=False, caps=True, up=V((
 def lathe(bd, profile, segs=12, mat=0, center=V((0, 0, 0)), axis='X', cap_start=False, cap_end=False,
           mats=None, phase=None):
     """Revolve [(radius, axial)] around an axis. mats: optional per-band material list."""
+    segs = lod_sides(segs)
     phase = math.pi / segs if phase is None else phase
     rings = []
     c = V(center)
@@ -257,6 +268,7 @@ def _axis_coords(h, c, segs, cuts):
 
 
 OPTIMIZE = False   # v05: drop subdivisions that only split flat faces
+LOD = False        # v06: game-ready load (~7k tris): coarse rounds, plain boxes, no tiny bits
 
 
 def rbox(bd, size, chamfer=0.0, segs=1, cuts=(0, 0, 0), mat=0, matrix=None, deform=None, face_mat=None):
@@ -270,6 +282,10 @@ def rbox(bd, size, chamfer=0.0, segs=1, cuts=(0, 0, 0), mat=0, matrix=None, defo
         cuts = (0, 0, 0)          # flat faces need no extra loops when nothing bends them
     if OPTIMIZE and max(size) <= 0.12:
         chamfer = 0.0             # rivets / tiny brackets: a plain block reads the same at this size
+    if LOD:
+        if max(size) <= 0.12:
+            return {}, []         # rivets / bolts vanish at game distance
+        chamfer, segs = 0.0, 1
     hx, hy, hz = (s / 2 for s in size)
     ch = chamfer if isinstance(chamfer, (list, tuple)) else (chamfer, chamfer, chamfer)
     ch = [min(c, h) for c, h in zip(ch, (hx, hy, hz))]

@@ -92,6 +92,10 @@ def axles(ctx):
 
 
 def coil(bd, base, top, r, wire, turns, mat):
+    if L.LOD:
+        # game load: the spring reads as a hexagonal sleeve between the perches
+        L.tube(bd, [base, V((base.x, base.y, top))], r, 8, mat, caps=False)
+        return
     pts = []
     n = int(turns * 10)
     h = top - base.z
