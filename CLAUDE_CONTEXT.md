@@ -279,11 +279,44 @@ The Sedan's Model has `LevelOfDetail = Automatic` and attributes such as
 
 ### The user's latest position
 
-"I think we're still good with **v05**." They had only read the task heading before.
+Earlier the user said "I think we're still good with **v05**" (they had only read the
+task heading). The 7k question was open until a voice note from a teammate settled it.
 
-The 7k-tri limit is ambiguous. If it covers the whole vehicle, v05 is about 6× over.
-If it covers only the listed parts, v05 passes (4.9–5.2k). I recommended the user
-confirm with Ifeoluwa or Jimoh. **No decision yet.**
+### Team voice note (2026-10-20), now the governing requirement
+
+The note came from a teammate on Telegram, probably Jimoh or Ifeoluwa (not confirmed).
+It was transcribed in the cloud session with faster-whisper `medium`, English forced:
+
+> What I was trying to tell you was that the car, the model of the Danfo itself, the model
+> of the Danfo should be like a normal Danfo model. Any of those details, maybe he sees a
+> hazard kind of bus or a very dangerous kind of bus, all those other details should be
+> added as layered detail. And everything entirely should be under 7k tris. I saw the
+> tires you were doing, you don't really need that much vertices for the tire also. You
+> don't even need that much at all. Well, I don't know, if you want me to send a car model
+> from Synty to you, I can also send one so you can see. Can you send me the link, the
+> drive link that Gideon sent to the group, so I can forward them to you?
+
+Uncertain words: "Synty" (first pass heard "scinti"; Synty Studios makes low-poly game
+assets) and the name "Gideon".
+
+**What this settles:**
+
+1. **The 7k limit is for the WHOLE vehicle.** v05 (41.9k) and v05_tris (37.8k) are far over.
+   v06 hit 6,993 but by collapse-decimation, which the user found lost too much form.
+   The right approach is to **model low-poly on purpose**, not to decimate.
+2. **The base model is a plain, normal danfo**: body shell, doors, wheels, steering
+   wheel, lights, glass.
+3. **Everything else is a layered detail**, built as separate swappable parts so one base
+   danfo serves every variant (e.g. a "hazard / dangerous bus" variant): exoskeleton cage,
+   armour or riveted plates, bull bar, roof rack, luggage, light bar, wing, ladder, spare,
+   exhaust stack, skid plate, shackles. Per the ClickUp task, the roof rack and bull bar
+   are also "Attachments" (upgrades).
+4. **The tyres must be much lighter.** The `ILikeTheTires.blend` tyre is 452 tris and
+   can't be reduced cleanly (12-sided with tread lugs). Build a simple low-poly tyre and
+   rim instead, split into separate tire and rim objects for rim customization. Ask the
+   user before dropping the tyre style they chose.
+5. The team may send a **Synty car model** as a poly-density reference, plus a Google
+   Drive link. Ask the user for them before starting the low-poly build.
 
 ### Gaps between v05 and the full task
 
@@ -318,9 +351,18 @@ These were listed to the user. None has been started.
 
 ## 9. Suggested next step
 
-Ask or confirm with the user before big work. Likely next request: a **v07** built
-from v05 that does the Roblox split (§8 gaps 1–5, 7, 8) and possibly the decal
-atlas (6). Rules for v07:
+Ask or confirm with the user before big work. Likely next request: a **v07 game
+model** that meets the voice note and the ClickUp task:
+
+- A purpose-built low-poly base danfo, **≤7k tris for everything including the layers**.
+  Use v05 as the shape and proportion reference, scaled to 18×8×9.
+- Layered-detail parts kept separate.
+- The Roblox split and hierarchy (§8 gaps 1–5, 7, 8).
+- Possibly the decal atlas (§8 gap 6).
+- Predominantly quads, tris where needed (the user's stated preference).
+- Ask for the Synty reference first.
+
+Rules for v07:
 
 - **New file.** Leave v05 untouched.
 - **Add a variant** in `mb_build.py`, or a post-process script that opens v05 and re-organises it.
