@@ -36,6 +36,17 @@ These are background, populate-the-world props for a Roblox game.
   - "we don't need perfection here, a decent one, later this week we upgrade it". Then: iterate to near-perfect overlays.
   - **"I don't like your D and B at all"**, which triggered the rebuilds below.
 
+## LATEST USER DIRECTION (overrides older notes below)
+
+- "I really don't like this A, it doesn't match the shape and form."
+- **Lift all requirements except clean quad edge flow and low poly**, and replicate the concepts accurately.
+- **Camera:** use the fSpy-style vanishing-point camera (`ev_vpcam.py`) to approximate the concept camera, then model to match the concept from that angle.
+- **Priorities:** "Concept accuracy from that angle while keeping bus model accuracy and logicality is king."
+- **Fallback:** if overlays keep coming out flat or blocky, eyeball proportions, form and silhouette.
+- **Nano Banana:** the user suggested using it (Google's Gemini image model) to generate orthographic elevations. That needs a Gemini API key, and none is available in this session; ask the user for ortho elevations or a key.
+- **Wireframe pass:** done. `ev_render.py --wire` adds Wireframe-modifier copies.
+- **WIP finals:** `EnvVehicles/renders/wip/<key>_views_and_wire.jpg`.
+
 ## Where things stand
 
 **Status per vehicle:**

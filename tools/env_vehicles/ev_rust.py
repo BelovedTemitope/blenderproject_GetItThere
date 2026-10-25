@@ -123,18 +123,19 @@ def paint(path, stripes=((3.95, 4.2), (4.4, 4.65)), stripe_y=(-7.45, 7.55), whee
     col = np.zeros(A.shape + (3,)) + YELLOW
     nose = z < 6.0 + (nz - 0.5)
     col[nose] = PRIMER * (0.9 + 0.15 * nz[nose, None])
-    # crushed grille band with bent slats, one cracked headlamp, one empty socket
-    grille = (np.abs(x) < 3.25) & (z > 3.15 + 0.15 * np.sin(x * 1.7)) & (z < 3.95 + 0.12 * np.sin(x * 2.3 + 1))
+    # crushed grille band (bent at the impact), one cracked headlamp, one empty socket
+    bend = 0.28 * np.exp(-((x + 1.6) ** 2) / 1.2)
+    grille = (np.abs(x) < 3.25) & (z > 2.95 - bend) & (z < 3.85 - bend)
     col[grille] = BLACK * 1.2
-    for zz in (3.35, 3.55, 3.75):
-        slat = grille & (np.abs(z - zz - 0.12 * np.sin(x * 2.6 + zz * 7)) < 0.045)
-        col[slat] = PRIMER_D * 0.8
-    lamp = (x > 2.55) & (x < 3.3) & (z > 3.2) & (z < 3.85)
+    for zz in (3.17, 3.4, 3.63):
+        slat = grille & (np.abs(z - zz + bend) < 0.05)
+        col[slat] = PRIMER_D * 0.85
+    lamp = (x > 2.55) & (x < 3.3) & (z > 3.0) & (z < 3.7)
     col[lamp] = np.array((215, 214, 205), float)
-    col[lamp & (np.abs((x - 2.9) * 1.3 - (z - 3.5)) < 0.04)] = BLACK
-    col[(x < -2.55) & (x > -3.3) & (z > 3.2) & (z < 3.85)] = BLACK * 0.7
+    col[lamp & (np.abs((x - 2.9) * 1.3 - (z - 3.35)) < 0.04)] = BLACK
+    col[(x < -2.55) & (x > -3.3) & (z > 3.0 - bend) & (z < 3.7 - bend)] = BLACK * 0.7
     nc = fractal(A.shape, 23, octaves=3, base=4)
-    crease = (np.abs(nc - 0.5) < 0.012) & nose                               # crumple folds follow noise contours
+    crease = (np.abs(nc - 0.5) < 0.006) & nose                               # faint crumple folds
     col[crease] = PRIMER_D * 0.85
     nzl = fractal(A.shape, 25, octaves=4, base=3)
     p = 0.45 * soft(z - 1.7, 0.8) * (0.5 + nzl) + 0.5 * nzl - 0.55

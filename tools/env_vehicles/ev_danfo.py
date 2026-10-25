@@ -82,32 +82,33 @@ def deform(co, key, wreck):
     return V((x, y, z))
 
 
-def crushed_nose(bd, mat, nx=8, nz=6):
-    """Buckled front panel of the wreck: a clean quad grid, dented deepest at the impact point, folded
-    and wrapped round the front corners, lower edge shoved forward. Flat-shaded later so every facet reads."""
-    rnd = random.Random(5)
+def crushed_nose(bd, mat, nx=6, nz=4):
+    """Crumpled front of the wreck, as in concept B: a faceted sheet-metal mass bulging forward over the
+    bumper, the vehicle's left front corner folded out like a crushed fender, the right side caved in.
+    A clean quad grid with a few large, sharp facets (flat-shaded later)."""
+    rnd = random.Random(9)
     rows = []
+    zs = [Z0 + 0.1, 2.55, 3.35, 4.2, ZBELT + 0.02]
     for k in range(nz + 1):
-        z = Z0 + 0.08 + (ZBELT + 0.02 - Z0 - 0.08) * k / nz
         row = []
         for i in range(nx + 1):
             t = i / nx
-            x = -W2 - 0.03 + (2 * W2 + 0.06) * t
-            y = -L2 + 0.2
-            inner = 0 < i < nx and 0 < k < nz
+            x = -W2 + 2 * W2 * t
+            z = zs[k]
+            y = -L2 - 0.25 - 0.25 * math.sin(math.pi * t) * (1 - k / nz)          # bulges forward, most at the bottom
             if i in (0, nx):
-                y = -L2 + 0.8                                    # wraps onto the sides
+                y = -L2 + 0.85                                                    # wraps onto the sides
+                x = math.copysign(W2 + (0.18 if x > 0 else 0.04), x)              # left corner folded out
             elif i in (1, nx - 1):
-                y = -L2 + 0.3
-                x *= 0.97
-            dent = 0.5 * math.exp(-((x + 0.8) ** 2 / 3.2 + (z - 3.1) ** 2 / 1.6))    # impact: right of centre
-            y += dent
-            if k == 0:
-                y -= 0.2                                         # lower edge shoved forward
-            if inner:
-                y += rnd.uniform(-0.18, 0.18)
-                z += rnd.uniform(-0.12, 0.12)
-                x += rnd.uniform(-0.1, 0.1)
+                y = -L2 + 0.05
+            if x < 0 and 0 < i < nx:
+                y += 0.35 * math.exp(-((x + 1.6) ** 2) / 2.0) * (1 - abs(z - 3.0) / 2.5)   # right side caved in
+            if k == nz:
+                y = front_y(ZBELT) + (0.05 if 0 < i < nx else 0.85)               # ties into the windscreen base
+            elif 0 < i < nx and 0 < k:
+                y += rnd.uniform(-0.28, 0.28)
+                z += rnd.uniform(-0.18, 0.18)
+                x += rnd.uniform(-0.15, 0.15)
             row.append(bd.vert((x, y, z)))
         rows.append(row)
     for k in range(nz):
@@ -178,6 +179,7 @@ def build(col, origin, wreck=False, mats=None):
         E.box(bd, (0, 0.0, 2.85), (7.6, 14.2, 0.12), 7)             # dark cabin floor: the gutted interior reads
     if wreck:
         crushed_nose(bd, YEL)
+        E.box(bd, (W2 + 0.07, -4.3, 4.7), (0.16, 0.14, 5.6), YEL)   # front door sprung open: its edge stands proud
     # wheel wells
     for wy, (ya, y1, y2, yb) in ARCH.items():
         for s in (1, -1):
@@ -234,7 +236,7 @@ def build(col, origin, wreck=False, mats=None):
             E.uv_tiles(bm, {YEL}, ev_rust.tile_of)
             for f in bm.faces:                       # crushed nose: flat-shaded so every buckle reads
                 c = f.calc_center_median()
-                if f.material_index == YEL and c.y < -L2 + 0.95 and c.z < ZBELT + 0.1:
+                if f.material_index == YEL and c.y < -L2 + 1.0 and c.z < ZBELT + 0.1:
                     f.smooth = False
     body = E.finish('GIT_Env_Danfo%s_Body' % tag, bd, col, [M[n] for n in names], pre=pre)
     body.data.transform(Matrix.Diagonal((1, LEN_SCALE, 1, 1)))

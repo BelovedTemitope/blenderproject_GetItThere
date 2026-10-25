@@ -102,7 +102,8 @@ def main():
         i = args.index('--size'); size = tuple(int(v) for v in args[i + 1].split('x')); del args[i:i + 2]
     path, out, key = args[0], args[1], args[2]
     albedo = '--albedo' in args
-    args = [a for a in args if a != '--albedo']
+    wire = '--wire' in args
+    args = [a for a in args if a not in ('--albedo', '--wire')]
     views = args[3:] or ['fl', 'rl', 'side', 'front']
     bpy.ops.wm.open_mainfile(filepath=path)
     sc = bpy.context.scene
@@ -121,6 +122,28 @@ def main():
     setup(sc, samples, size)
     if albedo:
         albedo_mode(sc)
+    if wire:
+        # wireframe pass: a Wireframe-modifier copy of every mesh traces each real (quad) edge; the solid
+        # model hides the back edges
+        wm = bpy.data.materials.new('wire')
+        wm.use_nodes = True
+        wm.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.02, 0.02, 0.03, 1)
+        wm.node_tree.nodes['Principled BSDF'].inputs['Roughness'].default_value = 0.9
+        for o in objs:
+            w = o.copy()
+            w.data = o.data.copy()
+            w.data.materials.clear()
+            w.data.materials.append(wm)
+            sc.collection.objects.link(w)
+            if o.parent:
+                w.parent = o.parent
+                w.matrix_world = o.matrix_world.copy()
+            md = w.modifiers.new('wire', 'WIREFRAME')
+            md.thickness = 0.045
+            md.use_even_offset = True
+            md.use_relative_offset = False
+            md.offset = 0.0
+        sc.render.use_freestyle = False
     cd = bpy.data.cameras.new('cam')
     cam = bpy.data.objects.new('cam', cd)
     sc.collection.objects.link(cam)
@@ -165,7 +188,7 @@ def main():
             sc.render.use_border = True
             sc.render.border_min_x, sc.render.border_max_x = x0 / rx, x1 / rx
             sc.render.border_min_y, sc.render.border_max_y = 1 - y1 / ry, 1 - y0 / ry
-        sc.render.filepath = '%s_%s_%s.png' % (out, key, v)
+        sc.render.filepath = '%s_%s_%s%s.png' % (out, key, v, '_wire' if wire else '')
         bpy.ops.render.render(write_still=True)
         print('RENDERED', sc.render.filepath)
 
