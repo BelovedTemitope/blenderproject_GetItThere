@@ -29,15 +29,14 @@ COL = dict(yellow='#F2B705', black='#1E1E22', glass='#8D8B85', light='#E8E6DA', 
 
 LEN_SCALE = 0.94                          # final length trim from the concept overlay (A; B uses 0.90)
 VISOR = 0.15                              # roof overhang over the windscreen (A high roof); B has none
-ROOFS = {'high': (5.3, 8.0, 8.8, 9.4, 0.15), 'standard': (4.95, 7.8, 8.35, 8.8, -0.15)}
+ROOFS = {'high': (5.3, 8.0, 8.8, 9.4, 0.15, 0.72), 'standard': (4.95, 7.8, 8.35, 8.8, -0.15, 0.95)}
 STRIPE_SETS = {'high': ((4.3, 4.55), (4.75, 5.0)), 'standard': ((3.95, 4.2), (4.4, 4.65))}
 
 
 def configure(roof):
-    global ZBELT, ZWIN, ZROOF1, ZROOF, ZS, VISOR, STRIPES, XS
-    ZBELT, ZWIN, ZROOF1, ZROOF, VISOR = ROOFS[roof]
-    # the wreck gets a centre cut so the crushed nose has enough vertices to crumple
-    XS = [-W2, -2.6, 0.0, 2.6, W2] if roof == 'standard' else [-W2, -2.6, 2.6, W2]
+    global ZBELT, ZWIN, ZROOF1, ZROOF, ZS, VISOR, STRIPES, XS, SLOPE
+    ZBELT, ZWIN, ZROOF1, ZROOF, VISOR, SLOPE = ROOFS[roof]
+    XS = [-W2, -2.6, 2.6, W2]
     STRIPES = STRIPE_SETS[roof]
     ZS = [Z0, ZARCH, ZBELT, ZWIN, ZROOF1, ZROOF]
 
@@ -78,12 +77,42 @@ def deform(co, key, wreck):
             z = ARCH_SHOULDER
             y += 0.2 if y == ya else -0.2
     if wreck and j <= 1 and z <= ZBELT:
-        # crumpled nose: pushed in, worst at the vehicle's right (-x) corner, a little uneven
-        rnd = random.Random(i * 31 + k * 7 + j)
-        y += 0.15 + 0.4 * (1 - x / W2) / 2 + rnd.uniform(0.0, 0.18)
-        if Z0 < z < ZBELT:
-            z += rnd.uniform(-0.1, 0.1)
+        # the nose structure sits back; the crumpled front panel (crushed_nose) is modelled in front of it
+        y = -L2 + 0.35 if j == 0 else max(y, -L2 + 0.7)
     return V((x, y, z))
+
+
+def crushed_nose(bd, mat, nx=8, nz=6):
+    """Buckled front panel of the wreck: a clean quad grid, dented deepest at the impact point, folded
+    and wrapped round the front corners, lower edge shoved forward. Flat-shaded later so every facet reads."""
+    rnd = random.Random(5)
+    rows = []
+    for k in range(nz + 1):
+        z = Z0 + 0.08 + (ZBELT + 0.02 - Z0 - 0.08) * k / nz
+        row = []
+        for i in range(nx + 1):
+            t = i / nx
+            x = -W2 - 0.03 + (2 * W2 + 0.06) * t
+            y = -L2 + 0.2
+            inner = 0 < i < nx and 0 < k < nz
+            if i in (0, nx):
+                y = -L2 + 0.8                                    # wraps onto the sides
+            elif i in (1, nx - 1):
+                y = -L2 + 0.3
+                x *= 0.97
+            dent = 0.5 * math.exp(-((x + 0.8) ** 2 / 3.2 + (z - 3.1) ** 2 / 1.6))    # impact: right of centre
+            y += dent
+            if k == 0:
+                y -= 0.2                                         # lower edge shoved forward
+            if inner:
+                y += rnd.uniform(-0.18, 0.18)
+                z += rnd.uniform(-0.12, 0.12)
+                x += rnd.uniform(-0.1, 0.1)
+            row.append(bd.vert((x, y, z)))
+        rows.append(row)
+    for k in range(nz):
+        for i in range(nx):
+            bd.face((rows[k][i], rows[k + 1][i], rows[k + 1][i + 1], rows[k][i + 1]), mat)
 
 
 def in_arch(y):
@@ -146,6 +175,9 @@ def build(col, origin, wreck=False, mats=None):
             E.box(bd, (x, -4.35, 4.3), (1.9, 0.35, 1.7), 7)
         E.box(bd, (0, -0.9, 3.25), (6.6, 1.7, 0.5), 7)
         E.box(bd, (0, -0.05, 4.3), (6.6, 0.35, 1.7), 7)
+        E.box(bd, (0, 0.0, 2.85), (7.6, 14.2, 0.12), 7)             # dark cabin floor: the gutted interior reads
+    if wreck:
+        crushed_nose(bd, YEL)
     # wheel wells
     for wy, (ya, y1, y2, yb) in ARCH.items():
         for s in (1, -1):
@@ -157,14 +189,15 @@ def build(col, origin, wreck=False, mats=None):
     # bumpers (black), front grille band + lamps, stripes, tail lamps
     fy = -L2
     if wreck:
-        rot = Matrix.Rotation(math.radians(-7), 3, 'Y') @ Matrix.Rotation(math.radians(6), 3, 'Z')
-        E.box(bd, (0.2, fy - 0.05, 1.85), (8.0, 0.55, 0.7), BLK, rot)
+        rot = Matrix.Rotation(math.radians(-9), 3, 'Y') @ Matrix.Rotation(math.radians(3), 3, 'Z')
+        E.box(bd, (0.15, fy - 0.3, 1.8), (7.5, 0.5, 0.65), BLK, rot)
     else:
         E.box(bd, (0, fy - 0.2, 2.05), (8.3, 0.6, 0.8), BLK)
     E.box(bd, (0, L2 + 0.15, 2.05), (8.3, 0.55, 0.75), BLK)
-    gy = (fy + (0.45 if wreck else 0)) - 0.02
-    E.quad(bd, [(-3.25, gy, 3.15), (3.25, gy, 3.15), (3.25, gy, 3.95), (-3.25, gy, 3.95)], BLK)
-    for sx in ((1, -1) if not wreck else (1,)):
+    gy = fy - 0.02
+    if not wreck:
+        E.quad(bd, [(-3.25, gy, 3.15), (3.25, gy, 3.15), (3.25, gy, 3.95), (-3.25, gy, 3.95)], BLK)
+    for sx in ((1, -1) if not wreck else ()):
         x0, x1 = sorted((sx * 2.55, sx * 3.3))
         E.quad(bd, [(x0, gy - 0.02, 3.22), (x1, gy - 0.02, 3.22), (x1, gy - 0.02, 3.88), (x0, gy - 0.02, 3.88)], LGT)
     for sx in (1, -1):
@@ -190,7 +223,8 @@ def build(col, origin, wreck=False, mats=None):
         import bpy
         import ev_rust
         os.makedirs(TEX_DIR, exist_ok=True)
-        png = ev_rust.paint(os.path.join(TEX_DIR, 'T_Env_DanfoB_Paint.png'), stripes=STRIPES)
+        png = ev_rust.paint(os.path.join(TEX_DIR, 'T_Env_DanfoB_Paint.png'), stripes=STRIPES, z0=Z0, belt=ZBELT,
+                            win_top=ZWIN, gutter=ZROOF1, windows=[(a, b) for a, b, _ in WINDOWS], wheels=WHEEL_Y)
         img = bpy.data.images.load(png)
         img.pack()
         names[0] = 'M_Env_DanfoB_Paint'
@@ -198,6 +232,10 @@ def build(col, origin, wreck=False, mats=None):
         def pre(bm):
             E.orient_outward(bm, {YEL}, (0, 0, (Z0 + ZROOF) / 2))
             E.uv_tiles(bm, {YEL}, ev_rust.tile_of)
+            for f in bm.faces:                       # crushed nose: flat-shaded so every buckle reads
+                c = f.calc_center_median()
+                if f.material_index == YEL and c.y < -L2 + 0.95 and c.z < ZBELT + 0.1:
+                    f.smooth = False
     body = E.finish('GIT_Env_Danfo%s_Body' % tag, bd, col, [M[n] for n in names], pre=pre)
     body.data.transform(Matrix.Diagonal((1, LEN_SCALE, 1, 1)))
     body.location = origin

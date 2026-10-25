@@ -44,7 +44,8 @@ These are background, populate-the-world props for a Roblox game.
   - Shield nose with a V cross-section and chamfered corners; deep windscreen hood with an off-centre post.
   - Chunky mudguard with the lamp on its front; canopy with a rounded edge and a rear window opening.
   - Remaining nit: the front wheel could sit a touch further forward.
-- **B:** NEEDS REWORK. The user dislikes it:
+- **B:** IN PROGRESS. Done so far: a noise-driven rust atlas (`ev_rust.py`, 1024 px; patches grow from sills, arch lips, window corners, gutter and seams, with ragged edges); grey primer on the nose, front corners, B pillar and a door patch; a crumpled front panel (`crushed_nose` in `ev_danfo.py`, flat-shaded); a sagging bumper; a dark cabin floor; and a steeper windscreen rake (SLOPE 0.95 for the standard roof).
+  The nose still reads too flat in renders, and the painted grille slats look scribbly. The user originally disliked it because:
   - the rust texture reads as polka dots; it needs large ragged flaking patches along edges, arches, sills and window corners, plus big grey primer areas
   - the nose needs a real crushed form
   - the open windows read as cardboard
@@ -80,6 +81,14 @@ These are background, populate-the-world props for a Roblox game.
     - `ev_blend.py` gives the zoomed 50/50 blend plus magenta model edges, the main visual check.
   - `dev/iterate.sh <work_dir> [keys]` runs build → render → landmark scores → blend images. `dev/sheet.py` builds contact sheets.
 - **Fitted cameras:** `tools/env_vehicles/concept_cams.json`. The concept is AI-drawn and its perspective is not consistent across vehicles, so each vehicle has its own camera.
+
+## fSpy
+
+The user asked for fSpy camera placement.
+- **Add-on:** the fSpy Blender add-on is installed in the headless bpy at `~/.config/blender/5.2/scripts/addons/fspy_blender`, cloned from github.com/stuffmatic/fSpy-Blender. It imports `.fspy` files fine, but those files can only be made in the fSpy desktop app (GUI). If the user sends `.fspy` files, import them with `bpy.ops.fspy_blender.import_project(filepath=...)`.
+- **Headless equivalent:** `tools/env_vehicles/ev_vpcam.py` runs fSpy's two-vanishing-point solve on hand-read edge lines (`concept_lines.json`, made with a gridded zoom crop).
+  - For A it gave az 33.5° / el 12.2° (principal point at the vehicle centre), against az 43.6° / el 16.2° from the landmark fit.
+  - The landmark camera scores better (regions 0.505 vs 0.441) and reproduces the concept's line directions, so the landmark cameras are kept and the vanishing-point solve is used as a cross-check.
 
 ## Environment
 

@@ -235,15 +235,15 @@ def finish(name, bd, col, mats, origin=None, smooth_angle=35.0, recalc=True, pre
     if recalc:
         bmesh.ops.recalc_face_normals(bd.bm, faces=bd.bm.faces)
     bd.bm.normal_update()
+    for f in bd.bm.faces:
+        f.smooth = True
     if pre:
-        pre(bd.bm)
+        pre(bd.bm)                       # may set UVs, flip faces or flat-shade some faces
     me = bpy.data.meshes.new(name)
     bd.bm.to_mesh(me)
     bd.bm.free()
     for m in mats:
         me.materials.append(m)
-    for p in me.polygons:
-        p.use_smooth = True
     me.set_sharp_from_angle(angle=math.radians(smooth_angle))
     ob = bpy.data.objects.new(name, me)
     col.objects.link(ob)
