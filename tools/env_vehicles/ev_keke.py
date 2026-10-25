@@ -17,12 +17,12 @@ from mathutils import Matrix, Vector as V
 import ev_lib as E
 
 YF = -4.65                       # nose front
-Y_COWL_BACK = -3.05
+Y_COWL_BACK = -2.75
 Z_CHIN, Z_FLOOR, Z_BELT, Z_COWL = 2.0, 1.15, 4.45, 4.75
 ROOF_Z, ROOF_EDGE_Z, CANOPY_LOW = 7.4, 6.75, 4.05
 Y_REAR = 4.42
 WHEEL_R, WHEEL_W = 0.95, 0.62
-FRONT_WHEEL = (0.0, -4.0)
+FRONT_WHEEL = (0.0, -4.4)
 REAR_WHEEL = (2.2, 3.0)
 
 COL = dict(paint='#F2B705', canopy='#3B3630', glass='#9DA3A6', seat='#6B4A33', chrome='#B7BBBF', black='#1E1E22',
@@ -34,18 +34,19 @@ PAINT, CAN, GLS, SEAT, CHR, BLK, ORG, LGT, RED = range(9)
 # cowl
 # ---------------------------------------------------------------------------
 C_US = [-1.0, -0.78, 0.78, 1.0]
-C_YS = [YF, -4.3, -3.3, Y_COWL_BACK]
+C_YS = [YF, -4.3, -3.0, Y_COWL_BACK]
 C_WS = [0.0, 0.55, 0.88, 1.0]
 
 
 def cowl_point(i, j, k):
     y, u, w = C_YS[j], C_US[i], C_WS[k]
+    # the whole cowl narrows towards the bottom (V cross-section), most at the nose
     if j == 0:
         zb, hw = Z_CHIN, 0.75 + (2.05 - 0.75) * w ** 0.85
     elif j == 1:
-        zb, hw = 1.75, 1.15 + (2.3 - 1.15) * w ** 0.7
+        zb, hw = 1.75, 1.05 + (2.3 - 1.05) * w ** 0.7
     else:
-        zb, hw = Z_FLOOR, 2.35
+        zb, hw = Z_FLOOR, 1.5 + (2.35 - 1.5) * w ** 0.55
     z = zb + (Z_COWL - zb) * w
     if k == 2:
         z = Z_BELT
@@ -131,7 +132,7 @@ def rear_tub(bd):
 def frame(bd):
     xs = [-2.22, -1.9, -0.72, -0.56, 1.9, 2.22]
     zs = [Z_COWL, Z_COWL + 0.28, 6.45, 6.95]
-    ys = [-4.38, -4.08]
+    ys = [-4.38, -3.75]                                      # deep hood: side bands wrap back along the cowl
 
     def deform(co, key):
         i, j, k = key
@@ -143,8 +144,13 @@ def frame(bd):
         return V((x, y, z))
 
     def fm(axis, side, c):
-        if axis == 1 and side < 0 and zs[1] < c.z < zs[2] and (xs[1] < c.x < xs[2] or xs[3] < c.x < xs[4]):
+        pane = zs[1] < c.z < zs[2] and (xs[1] < c.x < xs[2] or xs[3] < c.x < xs[4])
+        if axis == 1 and side < 0 and pane:
             return GLS
+        if axis == 1 and side > 0 and (pane or zs[1] < c.z < zs[2] and xs[1] < c.x < xs[4]):
+            return None                                      # open behind the glass (seen from the cabin)
+        if axis == 2 and side < 0 and xs[0] < c.x < xs[-1] and xs[1] < c.x < xs[4]:
+            return None                                      # sits on the cowl top
         return PAINT
     _, faces, _ = E.grid_box(bd, xs, ys, zs, deform=deform, face_mat=fm)
     glass = [f for f in faces if f.material_index == GLS]
@@ -175,43 +181,38 @@ def build(col, origin):
         out = n if (((a + b) / 2 - V((0, -3.6, 0))).dot(n) > 0) else -n
         E.quad(bd, [a + out + V((0, 0, -0.06)), b + out + V((0, 0, -0.06)), b + out + V((0, 0, 0.1)),
                     a + out + V((0, 0, 0.1))], BLK)
-    for s in (1, -1):
-        i0, i1 = (2, 3) if s > 0 else (0, 1)
-        p0, p1 = cowl_point(i0, 0, 1), cowl_point(i1, 0, 1)
-        q0, q1 = cowl_point(i0, 0, 2), cowl_point(i1, 0, 2)
-        a = p0.lerp(q0, 0.45).lerp(p1.lerp(q1, 0.45), 0.2)
-        b = p0.lerp(q0, 0.45).lerp(p1.lerp(q1, 0.45), 0.85)
-        c = p0.lerp(q0, 0.75).lerp(p1.lerp(q1, 0.75), 0.85)
-        d = p0.lerp(q0, 0.75).lerp(p1.lerp(q1, 0.75), 0.2)
-        n = (b - a).cross(d - a).normalized() * 0.015
-        if n.dot(V((s, -0.3, 0))) < 0:
-            n = -n
-        pts = [a + n, b + n, c + n, d + n]
-        E.quad(bd, pts if s > 0 else pts, ORG)
+    for s in (1, -1):                                      # orange indicators on the cowl side faces
+        i = 3 if s > 0 else 0
+        p00, p10 = cowl_point(i, 1, 1), cowl_point(i, 2, 1)
+        p01, p11 = cowl_point(i, 1, 2), cowl_point(i, 2, 2)
+        q = lambda u, v: (p00.lerp(p10, u)).lerp(p01.lerp(p11, u), v) + V((s * 0.015, 0, 0))
+        pts = [q(0.08, 0.45), q(0.55, 0.45), q(0.55, 0.78), q(0.08, 0.78)]
+        E.quad(bd, pts if s > 0 else pts[::-1], ORG)
     fy = YF - 0.015
     vb, vt = cowl_point(1, 0, 0), cowl_point(1, 0, 2)
-    E.quad(bd, [(-1.2, fy, 2.35), (-0.55, fy, 2.35), (-0.5, fy, 4.25), (-1.3, fy, 4.25)], BLK)
+    E.quad(bd, [(-0.62, fy, 2.3), (-0.28, fy, 2.3), (-0.22, fy, 4.25), (-0.78, fy, 4.25)], BLK)
     # front mudguard (rounded shroud), fork, headlamp
     wc = V((FRONT_WHEEL[0], FRONT_WHEEL[1], WHEEL_R))
-    rr = WHEEL_R + 0.22
-    arc = [wc + V((0, -math.cos(a) * rr, math.sin(a) * rr)) for a in (math.radians(d) for d in (12, 45, 78, 111, 144))]
+    rr = WHEEL_R + 0.2
+    angs = [math.radians(d) for d in (28, 62, 96, 130, 160)]
+    arc = [wc + V((0, -math.cos(a) * rr, math.sin(a) * rr)) for a in angs]
     for a, b in zip(arc, arc[1:]):
-        E.beam(bd, a, b, 1.1, 0.22, PAINT, up=V((1, 0, 0)), caps=False)
+        E.beam(bd, a, b, 1.2, 0.28, PAINT, up=V((1, 0, 0)), caps=False)      # chunky mudguard over the wheel
     for s in (1, -1):
         E.beam(bd, wc + V((s * 0.42, 0, 0)), V((s * 0.42, FRONT_WHEEL[1] + 0.3, Z_CHIN + 0.05)), 0.13, 0.13, BLK,
                caps=False)
-    lamp = arc[0] + V((0, 0.05, 0.42))
+    lamp = arc[1] + V((0, -math.cos(angs[1]), math.sin(angs[1]))) * 0.36    # sits on the mudguard front
     E.lathe(bd, [(0.38, lamp.y + 0.25), (0.38, lamp.y - 0.05), (0.3, lamp.y - 0.12)], 10, (lamp.x, 0, lamp.z), 'Y',
             [BLK, BLK], cap_start=BLK, cap_end=LGT)
     # driver seat on its base, rail + pad behind it, rear bench, grab poles
-    E.box(bd, (0, -2.1, 2.05), (1.2, 0.9, 0.8), BLK)
-    E.box(bd, (0, -2.1, 2.7), (1.6, 1.15, 0.5), SEAT)
-    E.box(bd, (0, -1.45, 3.4), (1.5, 0.22, 0.95), SEAT)
-    E.beam(bd, (-2.25, -0.85, 3.85), (2.25, -0.85, 3.85), 0.1, 0.1, CHR, caps=False)
+    E.box(bd, (0, -1.85, 2.05), (1.2, 0.9, 0.8), BLK)
+    E.box(bd, (0, -1.85, 2.7), (1.6, 1.15, 0.5), SEAT)
+    E.box(bd, (0, -1.2, 3.4), (1.5, 0.22, 0.95), SEAT)
+    E.beam(bd, (-2.25, -0.75, 3.85), (2.25, -0.75, 3.85), 0.1, 0.1, CHR, caps=False)
     E.box(bd, (0, 0.05, 3.42), (4.4, 1.15, 0.45), SEAT)
     E.box(bd, (0, 0.85, 4.5), (4.4, 0.3, 1.75), SEAT)
     for s in (1, -1):
-        E.beam(bd, (s * 2.22, -0.85, 1.62), (s * 2.22, -0.85, ROOF_EDGE_Z), 0.11, 0.11, CHR, caps=False)
+        E.beam(bd, (s * 2.22, -0.5, 1.62), (s * 2.22, -0.5, ROOF_EDGE_Z), 0.11, 0.11, CHR, caps=False)
     # tail lamps on the rear corners
     ry = Y_REAR + 0.02
     for s in (1, -1):
@@ -237,7 +238,7 @@ def canopy(col, origin, M):
     """Rounded black canopy: roof from the windscreen bar back, closed rear quarters and back panel with
     the rear window opening, open sides and front."""
     bd = E.Builder()
-    xs, ys = [-2.45, -2.0, 2.0, 2.45], [-3.95, 1.6, Y_REAR + 0.05]
+    xs, ys = [-2.42, -2.0, 2.0, 2.42], [-3.62, 1.6, Y_REAR + 0.05]
     zs = [CANOPY_LOW, 5.6, ROOF_EDGE_Z, 7.15, ROOF_Z]
 
     def deform(co, key):

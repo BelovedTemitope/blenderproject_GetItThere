@@ -40,7 +40,10 @@ These are background, populate-the-world props for a Roblox game.
 
 **Status per vehicle:**
 - **A and C:** good. Silhouette IoU 0.94 and 0.90, and the landmarks line up in the blend images.
-- **D:** just rebuilt from interlocking parts, as described in `ev_keke.py`'s docstring. Not yet overlay-checked.
+- **D:** rebuilt from interlocking parts (`ev_keke.py` docstring) and overlay-checked: silhouette 0.89–0.90.
+  - Shield nose with a V cross-section and chamfered corners; deep windscreen hood with an off-centre post.
+  - Chunky mudguard with the lamp on its front; canopy with a rounded edge and a rear window opening.
+  - Remaining nit: the front wheel could sit a touch further forward.
 - **B:** NEEDS REWORK. The user dislikes it:
   - the rust texture reads as polka dots; it needs large ragged flaking patches along edges, arches, sills and window corners, plus big grey primer areas
   - the nose needs a real crushed form
@@ -53,7 +56,7 @@ These are background, populate-the-world props for a Roblox game.
 4. Render the finals: shaded views plus a wireframe pass (Freestyle on all edges), and the concept overlays.
 5. Save `EnvVehicles/GIT_Env_Vehicles_ABCD_v01.blend` (and `textures/`), commit, push, and send the user the blend and renders.
 
-**Face counts at last build (all quads):** A 621, B 574, C 416, D 477.
+**Face counts at last build (all quads):** A 621, B 574, C 416, D 471.
 
 ## Files
 
