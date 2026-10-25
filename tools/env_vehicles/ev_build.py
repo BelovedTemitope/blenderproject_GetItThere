@@ -34,9 +34,13 @@ def main():
     report = {}
     for k in which:
         col = E.get_collection(NAMES[k], root)
-        if k in 'AB':
+        if k == 'A':
             import ev_danfo as D
-            parts = D.build(col, LINEUP[k], wreck=(k == 'B'), mats=D.materials())
+            import ev_danfoA as DA
+            parts = DA.build(col, LINEUP[k], D.materials())
+        elif k == 'B':
+            import ev_danfo as D
+            parts = D.build(col, LINEUP[k], wreck=True, mats=D.materials())
         elif k == 'C':
             import ev_taxi as T
             parts = T.build(col, LINEUP[k])

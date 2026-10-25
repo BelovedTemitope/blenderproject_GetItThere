@@ -47,6 +47,17 @@ These are background, populate-the-world props for a Roblox game.
 - **Wireframe pass:** done. `ev_render.py --wire` adds Wireframe-modifier copies.
 - **WIP finals:** `EnvVehicles/renders/wip/<key>_views_and_wire.jpg`.
 
+## A rebuilt (`ev_danfoA.py`)
+
+- A now has its own builder around the T3 high-roof features:
+  - gutter flange and lip at window-top height
+  - roof cap with sloping sides and a big front slope over the raked windscreen
+  - small chamfered front corners, narrow B and C pillars
+  - black rubber window seals
+- Camera is the fSpy-style vanishing-point camera (`ev_vpcam.py --pp crop`, stored as `A`/`A_vp` in the cams json).
+- `ev_vpprop.py` showed the concept is 11% longer under that camera (`LEN = 1.113`). Windows, stripes, wheels and the roof cap now line up in the blend images.
+- **Next:** port B onto this new base (standard roof, no cap), keeping the wreck features; re-check C and D with vanishing-point cameras; render the finals.
+
 ## Where things stand
 
 **Status per vehicle:**
