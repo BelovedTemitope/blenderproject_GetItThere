@@ -40,7 +40,8 @@ def main():
             parts = DA.build(col, LINEUP[k], D.materials())
         elif k == 'B':
             import ev_danfo as D
-            parts = D.build(col, LINEUP[k], wreck=True, mats=D.materials())
+            import ev_danfoA as DA
+            parts = DA.build(col, LINEUP[k], D.materials(), wreck=True)
         elif k == 'C':
             import ev_taxi as T
             parts = T.build(col, LINEUP[k])

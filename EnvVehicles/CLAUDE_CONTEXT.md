@@ -56,7 +56,13 @@ These are background, populate-the-world props for a Roblox game.
   - black rubber window seals
 - Camera is the fSpy-style vanishing-point camera (`ev_vpcam.py --pp crop`, stored as `A`/`A_vp` in the cams json).
 - `ev_vpprop.py` showed the concept is 11% longer under that camera (`LEN = 1.113`). Windows, stripes, wheels and the roof cap now line up in the blend images.
-- **Next:** port B onto this new base (standard roof, no cap), keeping the wreck features; re-check C and D with vanishing-point cameras; render the finals.
+- **B** now uses the same base (`ev_danfoA.build(..., wreck=True)`, `configure('standard')`), with its own vanishing-point camera (lines in `concept_lines.json`). Silhouette IoU is 0.85.
+- **Finals rendered:** `EnvVehicles/renders/<key>_views_and_wireframe.jpg` and `ABCD_concept_overlays.jpg`.
+- **Open items:**
+  - B's nose is still flatter and boxier than the concept's faceted crumple.
+  - B has 2 stray tris to clean up.
+  - C and D still use landmark-fitted cameras; give them vanishing-point cameras too.
+  - `ev_danfo.py` is now only used for materials, `TEX_DIR` and `COL`.
 
 ## Where things stand
 
